@@ -172,7 +172,7 @@ void SimAnalysis::intruder_stateCallback(const nav_msgs::OdometryConstPtr &msg)
     intruder_state_.ydot = msg->twist.twist.linear.y;
     intruder_state_.zdot = msg->twist.twist.linear.z;
 
-  checkIntercept();
+    checkIntercept();
 }
 
 void SimAnalysis::checkIntercept() {

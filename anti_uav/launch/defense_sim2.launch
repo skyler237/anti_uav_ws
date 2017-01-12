@@ -7,8 +7,8 @@
   <arg name="net_size" default="6.0"/>
   <arg name="net_size_half" default="3.0"/>
 
-  <!-- <arg name="world_file" default="fast_basic.world"/> -->
-  <arg name="world_file" default="basic.world"/>
+  <arg name="world_file" default="fast_basic.world"/>
+  <!-- <arg name="world_file" default="basic.world"/> -->
 
   <arg name="fleet_x_P" value="3.0"/>
   <arg name="fleet_x_I" value="0.06"/>
@@ -26,7 +26,7 @@
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
     <arg name="paused" value="true"/>
-    <arg name="gui" value="true"/>
+    <arg name="gui" value="false"/>
   </include>
 
   <!-- Set Up Fleet (net and 4 drones) -->
@@ -206,14 +206,16 @@
      COMPUTE_FLEET_STATE 8
      TARGET_PREDICT 16
      ADAPTIVE RADIUS 32-->
-    <param name="debug_print" value="0"/>
+    <param name="debug_print" value="8"/>
 
     <!--
      DIRECT 0
      WAYPOINT 1-->
     <param name="path_type" value="1"/>
 
-    <param name="protection_radius" value="80"/>
+    <!-- Protection radius also acts as max radius -->
+    <param name="protection_radius" value="60"/>
+    <param name="minimum_radius" value="40"/>
     <param name="control_delay" value="2.0"/>
 
     <remap from="estimate" to="fleet_goal"/>
