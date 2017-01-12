@@ -46,7 +46,7 @@ InterceptController::InterceptController() :
   max_.psi_rate = nh_private_.param<double>("max_yaw_rate", 0.03);
   max_.pos_error = nh_private_.param<double>("position_error", 2.0);
   max_.waypoint_cnt = nh_private_.param<int>("waypoint_cnt", 10);
-  max_.control_delay = nh_private_.param<double>("control_delay", 2.0);
+  max_.control_delay = nh_private_.param<double>("control_delay", 2.0); // assumed delay of our control in responding to the target's movements
 
   // Protective radius parameters
   protection_radius_ = nh_private_.param<double>("protection_radius", 100.0);
@@ -55,58 +55,40 @@ InterceptController::InterceptController() :
   current_radius_ = 10.0; // Initialize current target radius to 10 m
   full_response_radius_ = nh_private_.param<double>("full_response_radius", 20);
 
-  alpha0_ = nh_private_.param<double>("exp_avg_alpha0", 0.01);
-  debug_print = nh_private_.param<int>("debug_print", 0);
-  path_type = nh_private_.param<int>("path_type", 0);
-
-  resetting_ = false; // Used to indicate that the simulation is being reset
+  alpha0_ = nh_private_.param<double>("exp_avg_alpha0", 0.01); // Used for exponential rolling average in target prediction
+  debug_print = nh_private_.param<int>("debug_print", 0); // Used to determine which debug messages to print
+  path_type = nh_private_.param<int>("path_type", 0); // Determines path type (either direct or waypoint)
 
   // Initialize all positions and velocities to zero
   resetStates();
 
   // Set up Publishers and Subscriber
-  // state_sub_ = nh_.subscribe("estimate", 1, &InterceptController::stateCallback, this);
   is_flying_sub_ = nh_.subscribe("is_flying", 1, &InterceptController::isFlyingCallback, this);
   target_sub_ = nh_.subscribe("target", 1, &InterceptController::targetCallback, this);
 
+  // States of each fleet UAV
   uav1_state_sub_ = nh_.subscribe("uav1_pose", 1, &InterceptController::uav1_stateCallback, this);
   uav2_state_sub_ = nh_.subscribe("uav2_pose", 1, &InterceptController::uav2_stateCallback, this);
   uav3_state_sub_ = nh_.subscribe("uav3_pose", 1, &InterceptController::uav3_stateCallback, this);
   uav4_state_sub_ = nh_.subscribe("uav4_pose", 1, &InterceptController::uav4_stateCallback, this);
 
   // Subscribe to simulation results to know when to reset the simulation state variables
-  sim_results_sub_ = nh_.subscribe("results", 10, &InterceptController::sim_resultsCallback, this);
+  // sim_results_sub_ = nh_.subscribe("results", 10, &InterceptController::sim_resultsCallback, this);
 
+  // Desired position of the center of the fleet
   fleet_goal_pub_ = nh_.advertise<nav_msgs::Odometry>("fleet_goal", 1000);
+
+  // This message is just used for debugging
   path_coeff_pub_ = nh_.advertise<anti_uav::PathCoeff>("path_coeff", 10);
 }
-
-void InterceptController::sim_resultsCallback(const anti_uav::InterceptResultConstPtr &msg) {
-  resetting_ = true;
-
-
-  // Reset all state variables
-  resetStates();
-
-  // Re-plan the path
-  computeFleetState();
-  Eigen::Vector3d z(fleet_state_.x, fleet_state_.y, fleet_state_.z);
-  Eigen::Vector3d target_pos(xt_.x, xt_.y, xt_.z);
-
-  path_ = planPath(z, target_pos, target_pos);
-
-  // Reset the waypoint index
-  waypoint_index_ = 0;
-
-  resetting_ = false;
-}
-
 
 void InterceptController::isFlyingCallback(const std_msgs::BoolConstPtr &msg)
 {
   is_flying_ = msg->data;
 }
 
+// Retrieves the position and velocity of the target/intruder
+// May also attempt to predict the position of the intruder
 void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
 {
   xt_.x = msg->pose.pose.position.x;
@@ -203,6 +185,7 @@ void InterceptController::uav4_stateCallback(const nav_msgs::OdometryConstPtr &m
   uav4_state_.zdot = msg->twist.twist.linear.z;
 }
 
+// Computes the average/central position of the 4 fleet UAVs
 void InterceptController::computeFleetState() {
   fleet_state_.x = (uav1_state_.x + uav2_state_.x + uav3_state_.x + uav4_state_.x)/4.0;
   fleet_state_.y = (uav1_state_.y + uav2_state_.y + uav3_state_.y + uav4_state_.y)/4.0;
@@ -219,22 +202,10 @@ void InterceptController::computeFleetState() {
   fleet_state_.ydot = (uav1_state_.ydot + uav2_state_.ydot + uav3_state_.ydot + uav4_state_.ydot)/4.0;
   fleet_state_.zdot = (uav1_state_.zdot + uav2_state_.zdot + uav3_state_.zdot + uav4_state_.zdot)/4.0;
 
-  // Just in case we try to reset the position while the fleet state is being computed, if the system is being reset, default to zero
-  if(resetting_) {
-    fleet_state_.x = 0;
-    fleet_state_.y = 0;
-    fleet_state_.z = 0;
-    fleet_state_.xdot = 0;
-    fleet_state_.ydot = 0;
-    fleet_state_.zdot = 0;
-  }
 }
 
 void InterceptController::computeControl()
 {
-    // pronavControl();
-    // return;
-
     double now = ros::Time::now().toSec();
     double dt = now - prev_time_;
     prev_time_ = now;
