@@ -227,8 +227,6 @@ void InterceptController::computeFleetState() {
     fleet_state_.xdot = 0;
     fleet_state_.ydot = 0;
     fleet_state_.zdot = 0;
-
-    This will not compile. Still not compiling. Did this work?
   }
 }
 
