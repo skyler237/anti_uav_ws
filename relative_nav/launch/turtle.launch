@@ -1,0 +1,110 @@
+<launch>
+
+  <machine name="casey"    address="casey_vpn"    user="casey" 	    env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="splinter" address="splinter_vpn" user="splinter"   env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="laptop"   address="laptop_vpn"   user="gps-denied" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine nameiif="odroid"   address="odroid_vpn"   user="odroid" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+
+  <arg name="base_station" default="splinter"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+    fabmap:         { visualise: false,
+                      SelfMatchWindow: 5, 
+                      vocab:     $(find openfabmap)/codebooks/R01/vocab.yml,
+                      clTree:    $(find openfabmap)/codebooks/R01/clTree.yml,
+                      trainbows: $(find openfabmap)/codebooks/R01/trainbows.yml }
+    geometry_check: { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml ,
+                      camera_info_depth_path: $(find relative_nav_launch)/param/xtion_depth.yaml }
+    rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml,
+                      camera_info_depth_path: $(find relative_nav_launch)/param/xtion_rgb.yaml }
+    hex_map:        { visualization: true, 
+                      robust_gps: true,
+                      robust_lc: true,
+                      optimization_rate: 3}
+    hlpfollower:    { close_enough_threshold: 1.1}
+    hokuyo:         { frame_id: base_laser_link }
+    joy_commander:  { max_velocity: 1.0,
+                      max_yaw_rate: 1.5 }
+    obstacle_avoid: { max_velocity_command: 1.5,
+                      map_downsample: 3,
+                      hot_dog_radius: 0.3,
+                      bun_radius: 0.5,
+                      lookahead_time: 2.0,
+                      integral_gain: 0.25,
+                      dot_product_gain: 1.0,
+                      scale_gain: 1.0,
+                      spring_order: 1.0,
+                      uncertainty_gain: 1.0 }
+    gps_relay:      { drop: 30 }
+    rotor_estimator: { use_vo_keyframes: true }
+    scan_matcher:   { use_imu: false,
+                      use_odom: false }
+  </rosparam>
+
+ <!--Backend-->
+  <node name="fabmap"         pkg="openfabmap"          type="run_node"            output="screen"/>
+  <node name="geometry_check" pkg="geometry_check"      type="geometry_check_node" output="screen"/>
+  <node name="rgbd_cache"     pkg="rgbd_cache"          type="rgbd_cache_node"     output="screen"/>
+  <node name="hex_map"        pkg="hex_map"             type="hex_map_node"        output="screen"/>
+  <node name="hlpfollower"    pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/>
+
+
+
+ <!--Low Level Path Planning -->
+  <node name="xbox"                pkg="joy"                 type="joy_node"  machine="odroid"/>
+  <node name="planner_toggle"      pkg="joy_commander"       type="path_planner_toggle_node"  machine="odroid" >
+    <remap from="desired_state" to="raw_desired_state"/> </node>
+  <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node">
+    <remap from="desired_state" to="planner_desired_state"/> </node>
+  <node name="joy_commander"       pkg="joy_commander"       type="joy_commander_node"  machine="odroid">
+    <remap from="desired_state" to="joy_desired_state"/> </node>
+  <!-- <node name="obstacle_avoid"  pkg="obstacle_avoidance"  type="obstacle_avoidance_node" machine="odroid"/> -->
+
+
+ <!-- TurtleBot -->
+  <group ns="turtlebot">
+    <include file="$(find turtlebot_bringup)launch/minimal.launch"/>
+    <node name="turtle_controller" pkg="turtle_controller" type="turtle_controller_node">
+      <remap from="desired_state" to="/raw_desired_state"/>
+    </node>
+    <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+      <remap from="imu_data" to="mobile_base/sensors/imu_data"/>
+      <remap from="robot_pose_ekf/odom" to="odom_combined"/>
+      <param name="freq" value="10.0"/>
+      <param name="sensor_timeout" value="1.0"/>
+      <param name="publish_tf" value="true"/>
+      <param name="odom_used" value="true"/>
+      <param name="imu_used" value="true"/>
+      <param name="vo_used" value="false"/>
+      <param name="output_frame" value="odom"/>
+    </node>
+  </group>
+  <node name="rotor_estimator" pkg="rotor_estimator" type="truth">
+    <remap from="pose" to="/turtlebot/robot_pose_ekf/odom_combined"/> 
+  </node>
+  <node name="gyro_to_base" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 /base_footprint /gyro_link 100"/>
+  <node name="is_flying_pub" pkg="rostopic" type="rostopic" args="pub -r 100 /is_flying std_msgs/Bool &quot;data: true&quot;"/>
+
+ <!-- Sensors-->
+  <include file="$(find relative_nav_launch)/launch/rgbd.launch"/> 
+  <!-- <include file="$(find demo_rgbd)/demo_rgbd.launch" ns="cmu"/> -->
+  <!-- <node name="vo_cmu_relay" 	   pkg="vo_cmu_relay" 			type="vo_cmu_relay_node"> -->
+    <!-- <remap from="low_rate"  to="/cmu/aft_ba_to_init"/> -->
+    <!-- <remap from="high_rate" to="/cmu/cam2_to_init"/> </node> -->
+  <node name="hokuyo"  pkg="hokuyo_node"  type="hokuyo_node" machine="odroid"/>
+  <node name="scan_matcher" pkg="laser_scan_matcher" type="laser_scan_matcher_node"/>
+  <node name="base_to_laser" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 /base_link /base_laser_link 100"/>
+  <node name="ublox" pkg="ublox_gps" type="ublox_gps"  machine="odroid"/>
+  <node name="gps_relay" pkg="gps_relay" type="gps_relay_node" machine="odroid">
+    <remap from="gps/navposllh" to="ublox/navposllh"/>
+  </node>
+
+  <!-- Record -->
+  <node name="record" pkg="rosbag" type="record" args="-o LC_LS_GPS_Odom /scan /turtlebot/mobile_base/sensors/imu_data /keyframe /relative_state /node /edge /goal /raw_desired_state /desired_state /gps /ublox/navposllh /turtlebot/robot_pose_ekf/odom_combined /vo"/>
+
+ <!-- Visualization -->
+  <node name="graph_rviz"  pkg="rviz"  type="rviz" args="-d $(find hex_map)/rviz/map_visualizer.rviz"/>
+  <node name="obstacle_rviz" 	pkg="rviz" 		type="rviz" 				machine="$(arg base_station)" args="-d $(find obstacle_avoidance)/rviz/obstacle_avoidance.rviz" />
+  <!-- <node name="rqt_graph" 		pkg="rqt_graph" type="rqt_graph" 			machine="$(arg base_station)"/> -->
+</launch>

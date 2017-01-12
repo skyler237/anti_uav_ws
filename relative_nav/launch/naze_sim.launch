@@ -1,0 +1,102 @@
+<launch>
+
+  <arg name="mav_name" default="hummingbird"/>
+  <arg name="world_file" default="mocap_room.world"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+
+  xbox:           { deadzone: 0.15,
+                    autorepeat_rate: 10}
+  joy_commander:  { max_velocity: 1.5,
+                    initial_desired_z: -0.6,
+                    start_autonomous: false,
+                    desired_state_topic: joy_desired_state }
+  sim_reset: { model_name: $(arg mav_name) }
+  simple_planner: { world: 6,
+                    pose_topic: $(arg mav_name)/ground_truth/pose),
+                    threshold: 0.5 }
+  velocity_planner: { desired_state_topic: planner_desired_state,
+                      goal_topic: RN_goal,
+                      yaw_threshold: 7,
+                      yaw_p_gain: 0.0,
+                      position_threshold: 0.5,
+                      max_velocity: 0.5 }
+</rosparam>
+
+
+
+
+  <!--Joystick -->
+  <rosparam command="load" file="$(find joy_commander)/params/ps2.yaml"/>
+  <node name="xbox"                pkg="joy"                 type="joy_node"/>
+  <node name="planner_toggle"      pkg="joy_commander"        type="path_planner_toggle_node"/>
+  <node name="joy_commander"        pkg="joy_commander"        type="joy_commander_node"/>
+  
+  <!-- Autonomous Planning -->
+  <node name="simple_planner" pkg="simple_planner" type="simple_planner_node" output="screen"/>
+  <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node" output="screen" />
+  <!-- <node name="obstacle_avoid" pkg="obstacle_avoidance" type="obstacle_avoidance" output="screen" /> -->
+  <!-- <node name="path_planner_cmu" pkg="path_planner_cmu" type="path_planner_cmu"/> -->
+
+  <!--Control-->
+ <rosparam command="load" file="$(find rotor_controller)/gains/$(arg mav_name)_pid.yaml"/>
+ <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid" output="screen"/>
+<!--   <node name="joy_sim" pkg="joy_sim" type="joy_sim" >
+    <rosparam command="load" file="$(find joy_sim)/param/$(arg mav_name).yaml"/>
+  </node>
+ -->
+
+  <!-- Simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find rotor_gazebo)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+  <include file="$(find rotor_gazebo)/launch/spawn_mav.launch">
+    <arg name="mav_name"            value="$(arg mav_name)" />
+    <arg name="model"               value="$(find rotor_gazebo)/urdf/$(arg mav_name)/$(arg mav_name)_base.xacro" />
+    <arg name="enable_ground_truth" value="true" />
+    <arg name="z"                   value="0.08"/>
+  </include>
+  <node name="sim_reset" pkg="sim_reset" type="sim_reset_node"/>
+
+
+  <!-- Autopilot -->
+  <rosparam command="load" file="$(find attitude_controller)/param/$(arg mav_name).yaml"/>
+  <node name="attitude_controller" pkg="attitude_controller" type="attitude_controller_node">
+    <rosparam command="load" file="$(find rotor_gazebo)/param/$(arg mav_name).yaml"/>
+    <remap from="odometry" to="$(arg mav_name)/ground_truth/odometry"/>
+    <remap from="command/motor_speed" to="$(arg mav_name)/gazebo/command/motor_speed"/>
+  </node>
+
+
+  <!-- Estimation -->
+  <node name="ekf" pkg="mocap_filter"  type="mocap_filter" output="screen">
+    <rosparam command="load" file="$(find mocap_filter)/params/estimator.yaml" />
+    <remap from="mocap" to="/$(arg mav_name)/ground_truth/transform"/> 
+    <!-- <remap from="relative_state" to="estimate"/> -->
+  </node>
+
+    <!-- Truth -->
+  <node name="truth" pkg="rotor_estimator" type="truth">
+    <param name="use_vo_keyframes" value="true"/>
+    <remap from="mocap" to="$(arg mav_name)/ground_truth/transform"/>
+    <remap from="relative_state" to="transformed_mocap"/>
+    <remap from="is_flying" to="bleh"/>
+  </node>
+
+  <node name="plot" pkg="rqt_plot" type="rqt_plot" args="/transformed_mocap/transform/translation/z /relative_state/transform/translation/z"/>
+
+
+  <!--Estimation-->
+  <!-- <node name="cortex"              pkg="cortex_ros"          type="cortex_ros_node"/> -->
+<!--   <node name="vo_sim"              pkg="vo_sim"              type="vo_sim_node"/>
+   <remap from="truth" to="/naze/CG"/> </node>
+  <node name="start_trigger"       pkg="rmekf"               type="start_trigger.py"/>
+  <node name="rmekf"               pkg="rmekf"               type="rmekf_node" output="screen">
+    <rosparam command="load" file="$(find rmekf)/params/mocap_quad.yaml" /> 
+    <remap from="altimeter" to="/altimeter"/>
+    <remap from="vo" to="/vo_out"/>
+  </node> -->
+</launch>

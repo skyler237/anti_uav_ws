@@ -1,0 +1,149 @@
+<!-- This is a launch file that runs the bare minimum requirements to get -->
+<!-- gazebo running.  It requires a relative_nav::Command on /command -->
+<!-- to move the hex, and outputs imu, altimeter, laserscan and RGBD images -->
+<!-- as well as a relative_nav::FilterState message on /global_state  -->
+<!-- a geometry_msgs::StampedTransform on /mocap to imitate motion capture -->
+
+
+<launch>
+  <arg name="enable_ground_truth" default="true" />  
+
+  <!-- Place the 4 quadrotors in a 4x4 square (from 1,1 to 5,5)-->
+  <arg name="mav1_name"                default="defense_copter1" />
+  <arg name="mav1_log_file"            default="$(arg mav1_name)" />
+  <arg name="mav1_color"               default="White"/>
+  <arg name="mav1_x"                   default="1"/>
+  <arg name="mav1_y"                   default="1"/>
+  <arg name="mav1_z"                   default="0.1"/>
+  <arg name="mav1_yaw"                 default="0"/>
+
+
+  <arg name="mav2_name"                default="defense_copter2" />
+  <arg name="mav2_log_file"            default="$(arg mav2_name)" />
+  <arg name="mav2_color"               default="White"/>
+  <arg name="mav2_x"                   default="5"/>
+  <arg name="mav2_y"                   default="1"/>
+  <arg name="mav2_z"                   default="0.1"/>
+  <arg name="mav2_yaw"                 default="0"/>
+
+  <arg name="mav3_name"                default="defense_copter3" />
+  <arg name="mav3_log_file"            default="$(arg mav3_name)" />
+  <arg name="mav3_color"               default="White"/>
+  <arg name="mav3_x"                   default="1"/>
+  <arg name="mav3_y"                   default="5"/>
+  <arg name="mav3_z"                   default="0.1"/>
+  <arg name="mav3_yaw"                 default="0"/>
+
+  <arg name="mav4_name"                default="defense_copter4" />
+  <arg name="mav4_log_file"            default="$(arg mav4_name)" />
+  <arg name="mav4_color"               default="White"/>
+  <arg name="mav4_x"                   default="5"/>
+  <arg name="mav4_y"                   default="5"/>
+  <arg name="mav4_z"                   default="0.1"/>
+  <arg name="mav4_yaw"                 default="0"/>
+
+
+  <arg name="intruding_mav_name"       default="junker"/>
+  <arg name="intruding_mav_log_file"   default="$(arg intruding_mav_name)" />
+  <arg name="intruding_mav_color"      default="Black"/>
+  <arg name="intruding_mav_x"          default="10"/>
+  <arg name="intruding_mav_y"          default="10"/>
+  <arg name="intruding_mav_z"          default="10"/>
+  <arg name="intruding_mav_yaw"        default="0"/>
+
+
+  <arg name="world_file" default="basic.world"/>
+
+  <!-- Start Simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+
+
+  <!-- Spawn MAV models in Gazebo -->
+
+  <include file="$(find fcu_sim)/launch/spawn_mavs.launch">
+    <arg name="enable_ground_truth" value="true" />
+    <arg name="mav1_name"            value="$(arg mav1_name)" />
+    <arg name="model1"               value="$(find fcu_sim)/urdf/$(arg mav1_name)/$(arg mav1_name)_base.xacro" />
+    <arg name="mav1_x"                   value="$(arg mav1_x)"/>
+    <arg name="mav1_y"                   value="$(arg mav1_y)"/>
+    <arg name="mav1_z"                   value="$(arg mav1_z)"/>
+    <arg name="mav1_yaw"                 value="$(arg mav1_yaw)"/>
+    <arg name="mav1_color"               value="$(arg mav1_color)"/>
+
+    <arg name="mav2_name"            value="$(arg mav2_name)" />
+    <arg name="model2"               value="$(find fcu_sim)/urdf/$(arg mav2_name)/$(arg mav2_name)_base.xacro" />
+    <arg name="mav2_x"                   value="$(arg mav2_x)"/>
+    <arg name="mav2_y"                   value="$(arg mav2_y)"/>
+    <arg name="mav2_z"                   value="$(arg mav2_z)"/>
+    <arg name="mav2_yaw"                 value="$(arg mav2_yaw)"/>
+    <arg name="mav2_color"               value="$(arg mav2_color)"/>
+  </include>
+
+<!--
+  <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+    <arg name="mav_name"            value="$(arg intruding_mav_name)" />
+    <arg name="model"               value="$(find fcu_sim)/urdf/$(arg intruding_mav_name)/$(arg intruding_mav_name)_base.xacro" />
+    <arg name="enable_ground_truth" value="true" />
+    <arg name="x"                   value="$(arg intruding_mav_x)"/>
+    <arg name="y"                   value="$(arg intruding_mav_y)"/>
+    <arg name="z"                   value="$(arg intruding_mav_z)"/>
+    <arg name="yaw"                 value="$(arg intruding_mav_yaw)"/>
+    <arg name="color"               value="$(arg intruding_mav_color)"/>
+  </include> 
+
+  <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+    <arg name="mav_name"            value="$(arg mav1_name)" />
+    <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav1_name)/$(arg mav1_name)_base.xacro" />
+    <arg name="enable_ground_truth" value="true" />
+    <arg name="x"                   value="$(arg mav1_x)"/>
+    <arg name="y"                   value="$(arg mav1_y)"/>
+    <arg name="z"                   value="$(arg mav1_z)"/>
+    <arg name="yaw"                 value="$(arg mav1_yaw)"/>
+    <arg name="color"               value="$(arg mav1_color)"/>
+  </include>
+
+
+    <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+      <arg name="mav_name"            value="$(arg mav2_name)" />
+      <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav2_name)/$(arg mav2_name)_base.xacro" />
+      <arg name="enable_ground_truth" value="true" />
+      <arg name="x"                   value="$(arg mav2_x)"/>
+      <arg name="y"                   value="$(arg mav2_y)"/>
+      <arg name="z"                   value="$(arg mav2_z)"/>
+      <arg name="yaw"                 value="$(arg mav2_yaw)"/>
+      <arg name="color"               value="$(arg mav2_color)"/>
+    </include>
+
+    <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+      <arg name="mav_name"            value="$(arg mav3_name)" />
+      <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav3_name)/$(arg mav3_name)_base.xacro" />
+      <arg name="enable_ground_truth" value="true" />
+      <arg name="x"                   value="$(arg mav3_x)"/>
+      <arg name="y"                   value="$(arg mav3_y)"/>
+      <arg name="z"                   value="$(arg mav3_z)"/>
+      <arg name="yaw"                 value="$(arg mav3_yaw)"/>
+      <arg name="color"               value="$(arg mav3_color)"/>
+    </include>
+
+    <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+      <arg name="mav_name"            value="$(arg mav4_name)" />
+      <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav4_name)/$(arg mav4_name)_base.xacro" />
+      <arg name="enable_ground_truth" value="true" />
+      <arg name="x"                   value="$(arg mav4_x)"/>
+      <arg name="y"                   value="$(arg mav4_y)"/>
+      <arg name="z"                   value="$(arg mav4_z)"/>
+      <arg name="yaw"                 value="$(arg mav4_yaw)"/>
+      <arg name="color"               value="$(arg mav4_color)"/>
+    </include>
+-->
+  
+
+  
+
+
+</launch>

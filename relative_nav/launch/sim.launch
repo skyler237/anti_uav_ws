@@ -1,0 +1,136 @@
+<launch>
+
+  <arg name="mav_name" default="shredder"/>
+  <arg name="x"   default="0.0"/>
+  <arg name="y"   default="0.0"/>
+  <arg name="yaw" default="0.0"/>
+  <arg name="z"   default="1.0"/>
+  <arg name="color" default="White"/>
+  <arg name="path" default="1"/>
+  <arg name="starting_node_id" default="0"/>
+  <arg name="world_file" default="powerplant.world"/>
+
+  <!-- Start Simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+ <!-- Set Up MAV -->
+ <!-- Load Global Parameters -->
+ <rosparam command="load" file="$(find relative_nav)/param/$(arg mav_name).yaml"/>
+ <group ns="$(arg mav_name)">
+   <rosparam subst_value="True">
+     attitude_controller:     { robot_namespace: $(arg mav_name) }
+     truth:                   { always_flying: true }
+     xbox:                    { dev: /dev/input/js4,
+                                autorepeat_rate: 50 }
+     rc:                      { axis_roll: 0,
+                                axis_pitch: 1,
+                                axis_thrust: 2,
+                                axis_yaw: 4,
+                                thrust_to_mass_ratio: 1.8 }
+     simple_planner:          { world: $(arg path),
+                                threshold: 1.0 }
+     obstacle_avoidance:      { max_velocity_command: 5.0 }
+     velocity_planner:        { max_velocity: 1.0 }
+   </rosparam>
+
+   <!-- Spawn in Gazebo -->
+   <rosparam command="load" file="$(find fcu_sim)/param/$(arg mav_name)_physical_params.yaml"/>
+   <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+     <arg name="mav_name"            value="$(arg mav_name)" />
+     <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav_name)/$(arg mav_name)_base.xacro" />
+     <arg name="enable_ground_truth" value="true" />
+     <arg name="x"                   value="$(arg x)"/>
+     <arg name="y"                   value="$(arg y)"/>
+     <arg name="z"                   value="$(arg z)"/>
+     <arg name="yaw"                 value="$(arg yaw)"/>
+     <arg name="color"               value="$(arg color)"/>
+   </include>
+
+   <!-- Autopilot - to be moved into a gazebo plugin -->
+   <rosparam command="load" file="$(find attitude_controller)/param/$(arg mav_name)_gains.yaml"/>
+   <node name="attitude_controller" pkg="attitude_controller" type="attitude_controller_node"/>
+
+   <!-- Velocity Controller -->
+   <rosparam command="load" file="$(find rotor_controller)/param/$(arg mav_name).yaml"/>
+   <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid"/>
+
+   <!--Joystick -->
+   <!-- <rosparam command="load" file="$(find joy_commander)/params/RF.yaml"/> -->
+   <!-- <node name="xbox"                pkg="joy"                 type="joy_node"/> -->
+   <!-- <node name="rc"  pkg="ros_copter" type="rc_joy"/> -->
+   <!-- <node name="planner_toggle"      pkg="joy_commander"        type="path_planner_toggle_node"/> -->
+   <!-- <node name="joy_commander"        pkg="joy_commander"        type="joy_commander_node"/> -->
+
+   <!-- Path Planning -->
+   <node name="simple_planner" pkg="simple_planner" type="simple_planner_node">
+     <rosparam command="load" file="$(find simple_planner)/paths/$(arg mav_name).yaml"/>
+   </node>
+   <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node"/>
+   <node name="obstacle_avoid" pkg="obstacle_avoidance" type="obstacle_avoidance" output="screen" />
+
+   <!-- DEMO-RGBD -->
+   <node name="image_proc" pkg="image_proc" type="image_proc">
+     <remap from="image_raw" to="camera/rgb/image_raw"/>
+     <remap from="image_mono" to="camera/rgb/image_mono"/>
+   </node>
+   <include file="$(find demo_rgbd)/demo_rgbd.launch">
+     <arg name="rgb" value="/$(arg mav_name)/camera/rgb/image_mono"/>
+     <arg name="depth" value="/$(arg mav_name)/camera/depth/image_raw"/>
+     <arg name="imu" value="imu"/>
+   </include>
+   <node name="vo_cmu_relay" pkg="vo_cmu_relay" type="vo_cmu_relay_node" output="screen">
+     <remap from="low_rate"  to="bef_ba_to_init"/>
+     <remap from="high_rate" to="cam_to_init"/>
+     <remap from="/camera/depth/image" to="camera/depth/image_raw"/>
+     <remap from="/camera/rgb/image_color" to="camera/rgb/image_raw"/>
+     <param name="starting_keyframe_id" value="$(arg starting_node_id)"/>
+   </node>
+
+  <!-- Truth -->
+  <node name="truth" pkg="rotor_estimator" type="truth">
+    <param name="use_vo_keyframes" value="true"/>
+    <param name="starting_node_id" value="$(arg starting_node_id)"/>
+    <remap from="pose" to="ground_truth/pose_with_covariance"/>
+  </node>
+
+  <!-- Estimator -->
+  <!-- <node name="start_trigger"       pkg="rmekf"               type="start_trigger.py"/> -->
+  <!-- <node name="rmekf"               pkg="rmekf"               type="rmekf_node">
+    <rosparam command="load" file="$(find rmekf)/params/estimator.yaml" />
+    <remap from="imu/data" to="imu"/>
+  </node> -->
+
+  <!-- Backend -->
+  <rosparam subst_value="True">
+      fabmap:         { visualise: false,
+                        SelfMatchWindow: 5,
+                        vocab:     $(find openfabmap)/codebooks/R01/vocab.yml,
+                        clTree:    $(find openfabmap)/codebooks/R01/clTree.yml,
+                        trainbows: $(find openfabmap)/codebooks/R01/trainbows.yml }
+      geometry_check: { camera_info_rgb_path:   $(find relative_nav)/param/xtion_rgb.yaml ,
+                        camera_info_depth_path: $(find relative_nav)/param/xtion_depth.yaml }
+      rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav)/param/xtion_rgb.yaml,
+                        camera_info_depth_path: $(find relative_nav)/param/xtion_rgb.yaml }
+      hex_map:        { batch: false,
+                        optimization_rate: 1 }
+  </rosparam>
+
+  <node name="fabmap"              pkg="openfabmap"          type="run_node"            output="screen"/>
+  <node name="geometry_check"      pkg="geometry_check"      type="geometry_check_node" output="screen"/>
+  <node name="rgbd_cache"          pkg="rgbd_cache"          type="rgbd_cache_node"     output="screen"/>
+  <node name="hex_map"             pkg="hex_map"             type="hex_map_node"        output="screen"/>
+  <!-- <node name="hlpfollower"         pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/> -->
+
+  <!-- RQT -->
+  <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph"/>
+  <!-- <node name="tuning" pkg="rqt_reconfigure" type="rqt_reconfigure"/> -->
+
+  <!-- RViz -->
+  <node name="map_rviz" pkg="rviz" type="rviz" args="-d $(find obstacle_avoidance)/rviz/obstacle_avoidance.rviz" />
+</group>
+
+</launch>

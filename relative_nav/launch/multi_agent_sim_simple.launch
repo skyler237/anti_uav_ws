@@ -1,0 +1,97 @@
+<launch>
+
+
+  <arg name="mav1" default="mikey"/>
+  <arg name="mav2" default="shredder"/>
+  <arg name="mav3" default="link"/>
+  <arg name="mav4" default="mario"/>
+  <arg name="mav5" default="luigi"/>
+  <arg name="mav6" default="peach"/>
+
+  <arg name="world_file" default="better_crazy_world.sdf"/>
+
+  <!-- Start Simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+
+  <!-- Set Up Mikey -->
+  <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+    <arg name="x" value="0.0"/>
+    <arg name="y" value="0.0"/>
+    <arg name="z" value="1.0"/>
+    <arg name="yaw" value="3.14159"/>
+    <arg name="mav_name" value="$(arg mav1)"/>
+    <arg name="color" value="Yellow"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="1"/>
+  </include>
+
+  <!-- Set Up Shredder -->
+  <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+    <arg name="x" value="-1.0"/>
+    <arg name="y" value="-7.0"/>
+    <arg name="z" value="1.0"/>
+    <arg name="yaw" value="0.0"/>
+    <arg name="mav_name" value="$(arg mav2)"/>
+    <arg name="color" value="Turquoise"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="500"/>
+  </include>
+
+<!-- Set Up Link -->
+ <!-- <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+   <arg name="x" value="-6.0"/>
+   <arg name="y" value="-6.0"/>
+   <arg name="z" value="1.0"/>
+   <arg name="mav_name" value="$(arg mav3)"/>
+   <arg name="color" value="Turquoise"/>
+ </include>  -->
+
+ <!-- Set Up Mario -->
+  <!-- <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+    <arg name="x" value="-6.0"/>
+    <arg name="y" value="-0.0"/>
+    <arg name="z" value="1.0"/>
+    <arg name="mav_name" value="$(arg mav4)"/>
+    <arg name="color" value="RedTransparent"/>
+  </include> -->
+
+  <!-- Set Up Luigi -->
+   <!-- <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+     <arg name="x" value="-12.0"/>
+     <arg name="y" value="-0.0"/>
+     <arg name="z" value="1.0"/>
+     <arg name="mav_name" value="$(arg mav5)"/>
+     <arg name="color" value=" "/>
+   </include> -->
+
+   <!-- Set Up Peach -->
+    <!-- <include file="$(find relative_nav)/launch/single_agent_simple.launch">
+      <arg name="x" value="-6.0"/>
+      <arg name="y" value="-12.0"/>
+      <arg name="z" value="1.0"/>
+      <arg name="mav_name" value="$(arg mav6)"/>
+      <arg name="color" value="Gold"/>
+    </include> -->
+
+
+    <!-- Backend -->
+    <rosparam subst_value="True">
+        geometry_check: { camera_info_rgb_path:   $(find relative_nav)/param/xtion_rgb.yaml ,
+                          camera_info_depth_path: $(find relative_nav)/param/xtion_depth.yaml }
+        rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav)/param/xtion_rgb.yaml,
+                          camera_info_depth_path: $(find relative_nav)/param/xtion_rgb.yaml }
+    </rosparam>
+
+    <!-- <node name="hlpfollower"         pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/> -->
+
+  <!-- RQT -->
+  <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph"/>
+  <!-- <node name="tuning" pkg="rqt_reconfigure" type="rqt_reconfigure"/> -->
+
+
+</launch>

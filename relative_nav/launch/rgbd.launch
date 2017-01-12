@@ -1,0 +1,98 @@
+<!--
+This launch file starts the minimal processing for running an RGB-D camera such
+as the kinect, and providing the rgb/image and depth_registered/image topics
+required for running the vo_rgbd node. This launch file takes the place of the
+openni.launch file provided by the openni_launch package.
+-->
+
+<launch>
+
+  <arg name="camera" default="camera"/>
+
+  <arg name="tf_prefix" default="" />
+  <arg name="rgb_frame_id"   default="$(arg tf_prefix)/$(arg camera)_rgb_optical_frame" />
+  <arg name="depth_frame_id" default="$(arg tf_prefix)/$(arg camera)_depth_optical_frame" />
+  <arg name="publish_tf" default="true"/>
+
+  <arg name="device_id" default="#1"/>
+
+  <arg name="data_skip" default="1"/>
+
+  <arg name="manager" default="$(arg camera)_nodelet_manager"/>
+  <arg name="num_worker_threads" default="4"/>
+
+  <arg name="respawn" default="false" />
+  <arg     if="$(arg respawn)" name="bond" value="" />
+  <arg unless="$(arg respawn)" name="bond" value="--no-bond" />
+
+  <arg name="laser_sim" default="true"/>
+
+  <!-- By default, calibrations are stored to file://${ROS_HOME}/camera_info/${NAME}.yaml,
+       where ${NAME} is of the form "[rgb|depth]_[serial#]", e.g. "depth_B00367707227042B".
+       See camera_info_manager docs for calibration URL details. -->
+  <arg name="rgb_camera_info_url"   default="file://$(find relative_nav_launch)/param/xtion_rgb.yaml" />
+  <arg name="depth_camera_info_url" default="file://$(find relative_nav_launch)/param/xtion_depth.yaml" />
+
+  <!-- machine where nodelet manager should run -->
+  <machine name="localhost" address="localhost" env-loader="/opt/ros/hydro/env.sh"/>
+
+  <group ns="$(arg camera)">
+
+    <!-- nodelet manager -->
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)"
+        args="manager" output="screen" launch-prefix="" machine="localhost">
+      <param name="num_worker_threads" value="$(arg num_worker_threads)"/>
+    </node>
+
+    <!-- driver nodelet -->
+    <node pkg="nodelet" type="nodelet" name="driver" 
+          args="load openni2_camera/OpenNI2DriverNodelet $(arg manager) $(arg bond)"
+          respawn="$(arg respawn)">
+      <param name="device_id" value="$(arg device_id)"/>
+      <param name="rgb_camera_info_url"   value="$(arg rgb_camera_info_url)"/>
+      <param name="depth_camera_info_url" value="$(arg depth_camera_info_url)"/>
+      <param name="rgb_frame_id"   value="$(arg rgb_frame_id)"/>
+      <param name="depth_frame_id" value="$(arg depth_frame_id)"/>
+      <param name="depth_registration" value="true"/>
+      <param name="data_skip" value="$(arg data_skip)"/>
+    </node>
+
+    <!-- unrectified rgb processing -->
+    <node pkg="nodelet" type="nodelet" name="debayer"
+        args="load image_proc/debayer $(arg manager) $(arg bond)"
+        respawn="$(arg respawn)">
+      <remap from="image_raw"   to="rgb/image" />
+      <remap from="image_mono"  to="rgb/image_mono" />
+      <remap from="image_color" to="rgb/image_color" />
+    </node>
+
+    <!-- unrectified registered depth image -->
+<!--    <node pkg="nodelet" type="nodelet" name="depth_registered_metric"
+        args="load depth_image_proc/convert_metric $(arg manager) $(arg bond)"
+        respawn="$(arg respawn)">
+      <remap from="image_raw" to="depth_registered/image_raw" />
+      <remap from="image"     to="depth_registered/image" />
+    </node>-->
+
+    <!-- TODO add pointcloud processing with argument for turning on or off (see
+      rgbd_launch/launch/includes/depth_registered.launch.xml). Also, the
+      pointcloud processing uses rectified images... should we be using rectified
+      images for everything?
+    -->
+
+    <node if="$(arg laser_sim)" pkg="nodelet" type="nodelet" name="laser_sim"
+        args="load depthimage_to_laserscan/DepthImageToLaserScanNodelet $(arg manager) $(arg bond)"
+        respawn="$(arg respawn)">
+      <remap from="image" to="depth/image_raw"/>
+    </node>
+
+  </group>
+
+  <!-- Load reasonable defaults for the relative pose between cameras -->
+  <include if="$(arg publish_tf)"
+           file="$(find rgbd_launch)/launch/kinect_frames.launch">
+    <arg name="camera" value="$(arg camera)" />
+    <arg name="tf_prefix" value="$(arg tf_prefix)" />
+  </include>
+
+</launch>

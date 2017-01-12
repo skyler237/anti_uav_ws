@@ -1,0 +1,124 @@
+<launch>
+
+  <machine name="casey"    address="casey_vpn"    user="casey" 	    env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="splinter" address="splinter_vpn" user="splinter" 	env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="laptop"   address="laptop_vpn"   user="gps-denied" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="odroid"   address="odroid_vpn"   user="odroid"     env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+
+  <arg name="base_station" default="casey"/>
+
+  <!-- Set non-default parameters -->
+  <rosparam subst_value="True">
+  fabmap:         { visualise: false,
+                    SelfMatchWindow: 5, 
+                    vocab:     $(find openfabmap)/codebooks/R01/vocab.yml,
+                    clTree:    $(find openfabmap)/codebooks/R01/clTree.yml,
+                    trainbows: $(find openfabmap)/codebooks/R01/trainbows.yml }
+  geometry_check: { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml ,
+                    camera_info_depth_path: $(find relative_nav_launch)/param/xtion_depth.yaml }
+  rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml,
+                    camera_info_depth_path: $(find relative_nav_launch)/param/xtion_rgb.yaml }
+  hex_map:        { visualization: true}
+  hlpfollower:    { close_enough_threshold: 1.1}
+  mavros:         { fcu_url: 'serial:///dev/ttyUSB0' }
+  hokuyo_node:    { port: /dev/ttyACM0, 
+                    calibrate_time: false,
+                    frame_id: base_laser_link }
+  joy_commander:  { max_velocity: 1.5 }
+  vo_cmu_relay:   { kf_dist_linear: 0.25, 
+                    kf_dist_angular: 0.262 }
+  obstacle_avoid: { max_velocity_command: 1.0,
+                    map_downsample: 1,
+                    num_lines: 3,
+                    hot_dog_radius: 0.6,
+                    bun_radius: 1.2,
+                    spring_order: 1.5 }
+  path_planner:   { map_downsample: 3,
+                    hot_dog_radius: 0.6,
+                    bun_radius: 1.2,
+                    lookahead_time: 2.0,
+                    integral_gain: 0.25,
+                    dot_product_gain: 1.0,
+                    scale_gain: 1.0,
+                    uncertainty_gain: 1.0, 
+                    max_velocity_command: 1.5, 
+                    automous_yaw_gain: 0.10 } 
+  truth:          { use_vo_keyframes: true }
+  velocity_planner:  { max_velocity: 0.5 }
+  scan_matcher:   { use_imu: true,
+                    use_odom: false, 
+                    kf_dist_linear: 0.25,
+                    kf_dist_angular: 0.262 }
+ 
+
+  </rosparam>
+
+  <!--Backend-->
+  <node name="fabmap"              pkg="openfabmap"          type="run_node"            output="screen"/>
+  <node name="geometry_check"      pkg="geometry_check"      type="geometry_check_node" output="screen"/>
+  <node name="rgbd_cache"          pkg="rgbd_cache"          type="rgbd_cache_node"     output="screen"/>
+  <node name="hex_map"             pkg="hex_map"             type="hex_map_node"        output="screen"/>
+  <node name="hlpfollower"         pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/>
+  <!--gps-relay,gps on odriod -->
+ 
+  <!--Low Level Path Planning -->
+  <node name="xbox"                pkg="joy"                 type="joy_node"  				machine="odroid"/>
+  <node name="planner_toggle"      pkg="joy_commander"       type="path_planner_toggle_node"		machine="odroid" >
+    <!-- <remap from="desired_state" to="raw_desired_state"/>  -->
+  </node>
+  <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node">
+    <remap from="desired_state" to="planner_desired_state"/> </node>
+  <node name="joy_commander"       pkg="joy_commander"       type="joy_commander_node"  		machine="odroid">
+    <remap from="desired_state" to="joy_desired_state"/> 
+  </node>
+  <!-- <node name="obstacle_avoid"      pkg="obstacle_avoidance"  type="obstacle_avoidance_node"  machine="odroid"/> -->
+  <!-- <node name="path_planner"        pkg="path_planner_hotdog" type="path_planner_hotdog" 	 	machine="odroid"/> -->
+
+  <!--Control-->
+  <rosparam command="load" file="$(find rotor_controller)/gains/pid.yaml"/>
+  <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid"  output="screen"/>
+  <node name="mavlink_relay"       pkg="mavlink_relay"       type="relay"/>
+  <node name="mavros"              pkg="mavros"              type="mavros_node"/>
+
+  <!--Sensors-->
+  <node name="microstrain_imu"     pkg="microstrain_3dmgx2_imu" type="imu_node"/> 
+  <include file="$(find relative_nav_launch)/launch/rgbd.launch"/> 
+  <!--<include file="$(find demo_rgbd)/demo_rgbd.launch" ns="cmu"/> -->
+  <!--<node name="vo_cmu_relay" 	   pkg="vo_cmu_relay" 			type="vo_cmu_relay_node"> -->
+  <!--<remap from="low_rate"  to="/cmu/bef_ba_to_init"/> -->
+  <!--<remap from="high_rate" to="/cmu/cam_to_init"/>  -->
+  <!--</node> -->
+  <node name="hokuyo_node"         pkg="hokuyo_node"            type="hokuyo_node" machine="odroid"/> 
+  <node name="scan_matcher" pkg="laser_scan_matcher" type="laser_scan_matcher_node"/>
+  <node name="base_to_laser" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 /base_link /base_laser_link 100"/>
+
+  <!--Estimation-->
+  <node name="start_trigger"       pkg="rmekf"               type="start_trigger.py"/> 
+  <node name="rmekf"               pkg="rmekf"               type="rmekf_node"> 
+    <rosparam command="load" file="$(find rmekf)/params/estimator.yaml" /> 
+    <remap from="altimeter" to="/mavros/distance_sensor"/> 
+    <remap from="relative_state" to="estimated_state"/> 
+  </node> 
+
+  <!-- Visualization -->
+  <!-- <node name="obstacle_rviz"  pkg="rviz"    type="rviz" machine="$(arg base_station)"  args="-d /home/$(arg base_station)/obstacle/src/path_planner_hotdog/rviz/path_planner_hotdog.rviz" /> -->
+  <node name="map_rviz" pkg="rviz" type="rviz" machine="$(arg base_station)"  args="-d /home/$(arg base_station)/obstacle/src/hex_map/rviz/map_visualizer.rviz" />
+  <!--<node name="rqt_graph"         pkg="rqt_graph" type="rqt_graph"            machine="$(arg base_station)"/>-->
+
+  <!-- Gain Tuning -->
+  <!--<node name="rqt_reconfigure" pkg="rqt_reconfigure" type="rqt_reconfigure" machine="$(arg base_station)"/>-->
+  <!--<node name="plot" pkg="rqt_plot" type="rqt_plot" machine="$(arg base_station)" args="/relative_state/velocity/x /desired_state/velocity/x"/>-->
+
+
+  <!-- Truth -->
+  <node name="cortex"         	pkg="cortex_ros"            type="cortex_ros_node"/>
+  <node name="truth" pkg="rotor_estimator" type="truth">
+    <remap from="mocap" to="shredder/CG"/>
+  </node>
+
+  <!--Record-->
+  <node name="record" pkg="rosbag" type="record" args="-o Waypoint_Collect /imu/data /mavros/distance_sensor /vo /keyframe /relative_state /node /edge /goal /raw_desired_state /desired_state"/>
+
+  <!--<node name="record_debug" pkg="rosbag" type="record" args="-o debug /imu/data /mavros/distance_sensor /command /relative_state /node /edge /goal /raw_desired_state /desired_state /joy_desired_state /mavlink/to /is_flying"/>-->
+
+</launch>

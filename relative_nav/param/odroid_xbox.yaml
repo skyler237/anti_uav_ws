@@ -1,0 +1,16 @@
+x_axis: 3,
+y_axis: 4,
+yaw_axis: 0,
+z_axis: 1,
+
+x_sign: 1,
+y_sign: -1,
+yaw_sign: -1,
+z_sign: -1,
+
+alt_u_but: 13,
+alt_d_but: 14,
+
+mode_but: 0,
+llpp_but: 1,
+

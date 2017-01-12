@@ -1,0 +1,30 @@
+<launch>
+
+  <!-- Publishing blank filter messages for debugging -->
+  <!--
+  <node name="blank_filter_states" pkg="rotor_controller" type="publishFilterStates.sh"/>
+   -->
+  <node name="ref_server" pkg="rotor_controller" type="server_ref.py"/>
+
+  <node pkg="rqt_plot" type="rqt_plot" name="down"  output="screen" args="
+	/current_state/transform/translation/z
+	/current_state_fixed/transform/translation/z
+        /reference_trajectory/data[0] 
+	/reference_step_plot/data
+	"/>
+<!--
+
+	/reference_trajectory/data[1] 
+	/reference_trajectory/data[2] 
+
+
+-->
+
+
+  <node pkg="rqt_plot" type="rqt_plot" name="control"  output="screen" args="
+	/commands/thrust
+	/commands_fixed/thrust
+	"/>
+
+
+</launch>

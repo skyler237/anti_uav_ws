@@ -1,0 +1,63 @@
+<launch>
+
+  <machine name="casey"    address="casey_vpn"    user="casey" 	    env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="splinter" address="splinter_vpn" user="splinter"   env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="laptop"   address="laptop_vpn"   user="gps-denied" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="odroid"   address="odroid_vpn"   user="odroid" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+
+  <arg name="base_station" default="splinter"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+    fabmap:         { visualise: false,
+                      SelfMatchWindow: 5, 
+                      vocab:     $(find openfabmap)/codebooks/R01/vocab.yml,
+                      clTree:    $(find openfabmap)/codebooks/R01/clTree.yml,
+                      trainbows: $(find openfabmap)/codebooks/R01/trainbows.yml }
+    geometry_check: { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml ,
+                      camera_info_depth_path: $(find relative_nav_launch)/param/xtion_depth.yaml }
+    rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml,
+                      camera_info_depth_path: $(find relative_nav_launch)/param/xtion_rgb.yaml }
+    hex_map:        { visualization: true, 
+                      robust_gps: true,
+                      robust_lc: true,
+                      optimization_rate: 3}
+    hlpfollower:    { close_enough_threshold: 1.1}
+    hokuyo:         { frame_id: base_laser_link }
+    joy_commander:  { max_velocity: 1.0,
+                      max_yaw_rate: 1.5 }
+    obstacle_avoid: { max_velocity_command: 1.5,
+                      map_downsample: 3,
+                      hot_dog_radius: 0.3,
+                      bun_radius: 0.5,
+                      lookahead_time: 2.0,
+                      integral_gain: 0.25,
+                      dot_product_gain: 1.0,
+                      scale_gain: 1.0,
+                      spring_order: 1.0,
+                      uncertainty_gain: 1.0 }
+    gps_relay:      { drop: 30,
+                      max_uncertainty: 8.0 }
+    rotor_estimator: { use_vo_keyframes: true }
+    scan_matcher:   { use_imu: false,
+                      use_odom: false }
+  </rosparam>
+
+ <!--Backend-->
+  <node name="fabmap"         pkg="openfabmap"          type="run_node"            output="screen"/>
+  <node name="geometry_check" pkg="geometry_check"      type="geometry_check_node" output="screen"/>
+  <node name="rgbd_cache"     pkg="rgbd_cache"          type="rgbd_cache_node"     output="screen"/>
+  <node name="hex_map"        pkg="hex_map"             type="hex_map_node"        />
+  <node name="hlpfollower"    pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/>
+  <node name="gps_relay" pkg="gps_relay" type="gps_relay_node" output="screen">
+    <remap from="gps/navposllh" to="ublox/navposllh"/>
+  </node>
+
+  <node name="is_flying_pub" pkg="rostopic" type="rostopic" args="pub -r 100 /is_flying std_msgs/Bool &quot;data: true&quot;"/>
+
+ <!-- Visualization -->
+  <node name="graph_rviz"  pkg="rviz"  type="rviz" args="-d $(find hex_map)/rviz/map_visualizer.rviz"/>
+  <!-- <node name="obstacle_rviz" 	pkg="rviz" 		type="rviz" 				machine="$(arg base_station)" -->
+    <!-- args="-d $(find obstacle_avoidance)/rviz/obstacle_avoidance.rviz" /> -->
+  <!-- <node name="rqt_graph" 		pkg="rqt_graph" type="rqt_graph" 			machine="$(arg base_station)"/> -->
+</launch>

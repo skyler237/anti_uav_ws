@@ -1,0 +1,97 @@
+<launch>
+
+  <arg name="autonomous_mode"   default="true"/>
+  <arg name="simulator"         default="false"/>
+  <arg name="turtlebot"         default="true"/>
+  <arg name="hex"               default="false"/>
+
+  <machine name="casey"    address="casey"    user="casey" 	    env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="splinter" address="splinter" user="splinter" 	env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="laptop"   address="laptop"   user="gps-denied" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="odroid"   address="odroid"   user="odroid"     env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+  fabmap:         { visualise: false,
+                    SelfMatchWindow: 5, 
+                    vocab:     $(find openfabmap)/codebooks/R01/vocab.yml,
+                    clTree:    $(find openfabmap)/codebooks/R01/clTree.yml,
+                    trainbows: $(find openfabmap)/codebooks/R01/trainbows.yml }
+  geometry_check: { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml ,
+                    camera_info_depth_path: $(find relative_nav_launch)/param/xtion_depth.yaml }
+  rgbd_cache:     { camera_info_rgb_path:   $(find relative_nav_launch)/param/xtion_rgb.yaml,
+                    camera_info_depth_path: $(find relative_nav_launch)/param/xtion_rgb.yaml }
+  hex_map:        { visualization: true, robust_gps: false, initial_yaw: 165, opt_offset_y: 0.0}
+  hlpfollower:    { close_enough_threshold: 3.0}
+  mavros:         { pixhawk_port: /dev/ttyUSB0 }
+  gps_relay:      { drop: 100 }
+  ublox_gps:      { device: /dev/ttyACM0 }
+  hokuyo_node:    { port: /dev/ttyACM1, 
+                    calibrate_time: true,
+                    frame_id: base_laser_link }
+  obstacle_avoidance: { hot_dog_radius: 0.3,
+                        bun_radius: 0.5 }
+</rosparam>
+
+
+ <node name="fabmap"              pkg="openfabmap"          type="run_node"            output="screen"/>
+ <node name="geometry_check"      pkg="geometry_check"      type="geometry_check_node" output="screen"/>
+ <node name="rgbd_cache"          pkg="rgbd_cache"          type="rgbd_cache_node"     output="screen"/>
+ <node name="hex_map"             pkg="hex_map"             type="hex_map_node"        output="screen"/>
+ <node name="hlpfollower"         pkg="high_level_path_follower" type="high_level_path_follower_node" output="screen"/>
+ <node name="gps_relay"           pkg="gps_relay"           type="gps_relay_node"      output="screen"/>
+ <node name="xbox"                pkg="joy"                 type="joy_node"/>
+ <node name="hokuyo_node" pkg="hokuyo_node" type="hokuyo_node" />
+ <node name="gps" pkg="ublox_gps" type="ublox_gps" />
+ 
+ <!--autonomous mode -->
+ <node name="planner_toggle"      pkg="joy_commander"       type="path_planner_toggle_node" if="$(arg autonomous_mode)" >
+ <remap from="desired_state" to="raw_desired_state"/> </node>
+ <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node"    if="$(arg autonomous_mode)" >
+ <remap from="desired_state" to="planner_desired_state"/> </node>
+ <node name="joy_commander"       pkg="joy_commander"       type="joy_commander_node"       if="$(arg autonomous_mode)" >
+ <remap from="desired_state" to="joy_desired_state"/> </node>
+ <node name="obstacle_avoidance"  pkg="obstacle_avoidance"  type="obstacle_avoidance_node"  if="$(arg autonomous_mode)"/>
+ <!--non-autonomous mode -->
+ <node name="joy_commander"       pkg="joy_commander"       type="joy_commander_node"       unless="$(arg autonomous_mode)" />
+
+ <!--simulator option -->
+ <node name="hex_sim"             pkg="hex_sim"             type="hex_sim_node"   if="$(arg simulator)"/>
+ <node name="rotor_estimator"     pkg="rotor_estimator"     type="truth"          if="$(arg simulator)"/>
+ <rosparam command="load" file="$(find rotor_controller)/gains/pid.yaml"         if="$(arg simulator)"/>
+ <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid" if="$(arg simulator)" output="screen"/>
+
+ <!--turtlebot option -->
+ <include file="$(find turtlebot_bringup)/launch/minimal.launch"                          ns="turtlebot" if="$(arg turtlebot)"/>
+ <node name="turtle_controller"   pkg="turtle_controller"   type="turtle_controller_node" if="$(arg turtlebot)">
+ <remap from="cmd_vel_mux/input/teleop" to="/turtlebot/cmd_vel_mux/input/teleop"/> </node>
+ <node name="rotor_estimator"     pkg="rotor_estimator"     type="truth"                  if="$(arg turtlebot)">
+   <remap from="pose" to="/turtlebot/robot_pose_ekf/odom_combined"/> </node>
+ <include file="$(find relative_nav_launch)/launch/rgbd.launch"                         if="$(arg turtlebot)"/>
+ <include file="$(find demo_rgbd)/demo_rgbd.launch"               ns="cmu"              if="$(arg turtlebot)"/>
+ <node name="vo_cmu_relay" pkg="vo_cmu_relay" type="vo_cmu_relay_node"                  if="$(arg turtlebot)">
+   <remap from="low_rate"  to="/cmu/aft_ba_to_init"/>
+   <remap from="high_rate" to="/cmu/cam2_to_init"/> </node>
+
+ <!--hex option -->
+ <rosparam command="load" file="$(find rotor_controller)/gains/pid.yaml"                if="$(arg hex)"/>
+ <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid" if="$(arg hex)" output="screen"/>
+ <node name="mavlink_relay"       pkg="mavlink_relay"       type="relay"                if="$(arg hex)"/>
+ <node name="mavros"              pkg="mavros"              type="mavros_node"          if="$(arg hex)"/>
+ <node name="microstrain_imu"     pkg="microstrain_3dmgx2_imu" type="imu_node"          if="$(arg hex)"/>
+ <node name="start_trigger"       pkg="rmekf"               type="start_trigger.py"     if="$(arg hex)"/>
+ <node name="rmekf"               pkg="rmekf"               type="rmekf_node"           if="$(arg hex)"/>
+ <include file="$(find relative_nav_launch)/launch/rgbd.launch"                         if="$(arg hex)"/>
+ <include file="$(find demo_rgbd)/demo_rgbd.launch"               ns="cmu"              if="$(arg hex)"/>
+ <node name="vo_cmu_relay" pkg="vo_cmu_relay" type="vo_cmu_relay_node"                  if="$(arg hex)">
+ <remap from="low_rate"  to="/cmu/aft_ba_to_init"/>
+ <remap from="high_rate" to="/cmu/cam2_to_init"/> </node>
+ <node name="altimeter"           pkg="altimeter"           type="altimeter_node"       if="$(arg hex)"/>
+ <node name="truth_estimator"     pkg="rotor_estimator"     type="truth"    ns="truth"  if="$(arg hex)"/>
+
+ <!--Visualize -->
+ <!--<node name="graph_rviz_node"     pkg="rviz"                type="rviz" args="-d $(find hex_map)/rviz/map_visualizer.rviz"/>-->
+ <!--<node name="demo_rviz_node"      pkg="rviz"                type="rviz" args="-d $(find hex_sim)/rviz/demo.rviz" if="$(arg simulator)"/>-->
+ <!--<node name="rqt_graph"           pkg="rqt_graph"           type="rqt_graph"/>-->
+
+</launch>

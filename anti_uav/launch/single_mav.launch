@@ -1,0 +1,48 @@
+<launch>
+
+  <arg name="mav_name" default="shredder"/>
+  <arg name="x"   default="0.0"/>
+  <arg name="y"   default="0.0"/>
+  <arg name="yaw" default="0.0"/>
+  <arg name="z"   default="0.08"/>
+  <arg name="color" default="White"/>
+  <arg name="path" default="1"/>
+  <arg name="starting_node_id" default="0"/>
+
+<!-- Load Global Parameters -->
+<!-- <rosparam command="load" file="$(find anti_uav)/param/$(arg mav_name).yaml"/> -->
+
+ <!-- Set Up MAV -->
+ <group ns="$(arg mav_name)">
+   <rosparam subst_value="True">
+     attitude_controller:     { robot_namespace: $(arg mav_name) }
+     truth:                   { always_flying: true }
+     xbox:                    { dev: /dev/input/js0,
+                                autorepeat_rate: 50 }
+     rc:                      { axis_roll: 0,
+                                axis_pitch: 1,
+                                axis_thrust: 2,
+                                axis_yaw: 4,
+                                thrust_to_mass_ratio: 1.8 }
+     simple_planner:          { world: $(arg path),
+                                threshold: 1.0 }
+     obstacle_avoidance:      { max_velocity_command: 5.0 }
+     velocity_planner:        { max_velocity: 1.0 }
+   </rosparam>
+
+   <!-- Spawn in Gazebo -->
+   <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+     <arg name="mav_name"            value="$(arg mav_name)" />
+     <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav_name)/$(arg mav_name)_base.xacro" />
+     <arg name="enable_ground_truth" value="true" />
+     <arg name="x"                   value="$(arg x)"/>
+     <arg name="y"                   value="$(arg y)"/>
+     <arg name="z"                   value="$(arg z)"/>
+     <arg name="yaw"                 value="$(arg yaw)"/>
+     <arg name="color"               value="$(arg color)"/>
+   </include>
+
+   
+</group>
+
+</launch>

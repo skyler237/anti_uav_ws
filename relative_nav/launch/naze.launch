@@ -1,0 +1,78 @@
+<launch>
+  <machine name="casey"    address="casey"    user="casey" 	    env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="splinter" address="splinter" user="splinter" 	env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="laptop"   address="laptop"   user="gps-denied" env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+  <machine name="odroid"   address="odroid"   user="odroid"     env-loader="/opt/ros/indigo/rel_nav_env.sh"/>
+
+  <arg name="base_station" default="casey"/>
+  <arg name="mav_name" default="hummingbird"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+  joy_commander:  { max_velocity: 1.5,
+                    initial_desired_z: -0.6,
+                    start_autonomous: false,
+                    desired_state_topic: joy_desired_state }
+  xbox:           { deadzone: 0.15,
+                    dev: /dev/input/js1,
+                    autorepeat_rate: 10}
+  naze:           { rc_send_rate: 50.0,
+                    timeout: 20,
+                    serial_port: '/dev/ttyUSB0'}
+  simple_planner: { world: 6,
+                    pose_topic: naze/CG,
+                    threshold: 0.5 }
+  velocity_planner: { desired_state_topic: planner_desired_state,
+                      goal_topic: RN_goal,
+                      yaw_threshold: 7,
+                      yaw_p_gain: 0.0,
+                      position_threshold: 0.5,
+                      max_velocity: 0.5 }
+</rosparam>
+
+
+
+
+  <!-- Joystick   -->
+  <node name="xbox"                pkg="joy"                 type="joy_node" machine="$(arg base_station)">
+    <rosparam command="load" file="$(find joy_commander)/params/xbox.yaml"/></node>
+  <node name="planner_toggle"      pkg="joy_commander"        type="path_planner_toggle_node"/>
+  <node name="joy_commander"       pkg="joy_commander"       type="joy_commander_node" />
+
+  <!-- Autonomous Planning -->
+  <node name="simple_planner" pkg="simple_planner" type="simple_planner_node" output="screen"/>
+  <node name="velocity_planner"    pkg="velocity_planner"    type="velocity_planner_node" output="screen" />
+
+  <!-- Control -->
+ <rosparam command="load" file="$(find rotor_controller)/gains/$(arg mav_name)_pid.yaml"/>
+ <node name="pid_controller"      pkg="rotor_controller"    type="rotor_controller_pid" output="screen"/>
+  <!--<node name="joy_sim" pkg="joy_sim" type="joy_sim">-->
+  <!--<rosparam command="load" file="$(find relative_nav)/param/xbox.yaml"/>-->
+  <!--<rosparam command="load" file="$(find relative_nav)/param/hummingbird.yaml"/>-->
+  <!--</node>-->
+ 
+
+  <!-- Autopilot -->
+  <rosparam command="load" file="$(find naze_ros)/param/rc.yaml"/>
+  <node name="naze" pkg="naze_ros" type="naze_ros_node" machine="odroid" output="screen">
+    <rosparam command="load" file="$(find relative_nav)/param/$(arg mav_name).yaml"/>
+  </node>
+
+  <!-- Truth -->
+  <node name="cortex" pkg="cortex_ros" type="cortex_ros_node"/>
+  <node name="truth" pkg="rotor_estimator" type="truth">
+    <param name="use_vo_keyframes" value="true"/>
+    <remap from="mocap" to="naze/CG"/>
+    <remap from="relative_state" to="transformed_mocap"/>
+    <remap from="is_flying" to="bleh"/>
+  </node>
+
+  <!--Estimation-->
+  <node name="ekf" pkg="mocap_filter"  type="mocap_filter" output="screen">
+    <rosparam command="load" file="$(find mocap_filter)/params/estimator.yaml" />
+    <remap from="mocap" to="/naze/CG"/>
+  </node>
+ 
+  <!--Record-->
+  <node name="record" pkg="rosbag" type="record" args="-a -o naze"/>
+</launch>

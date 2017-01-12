@@ -1,0 +1,7 @@
+shredder: {
+  mass: 0.001,
+  max_roll: !degrees 25.0,
+  max_pitch: !degrees 25.0,
+  max_yaw_rate: !degrees 90.0,
+  max_thrust: 60
+}

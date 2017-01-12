@@ -1,0 +1,447 @@
+<?xml version="1.0"?>
+<!--
+
+Gazebo Shredder Definition File
+Author: James Jackson
+
+-->
+
+<robot name="fleet" xmlns:xacro="http://ros.org/wiki/xacro">
+<!-- Properties -->
+<xacro:property name="namespace" value="fleet" />
+<xacro:property name="use_uav_mesh_file" value="true" />
+<xacro:property name="uav_mesh_file" value="package://fcu_sim/meshes/firefly.dae" />
+<xacro:property name="uav_mass" value="3.81" /> <!-- [kg] -->
+<xacro:property name="uav_body_width" value="0.505" /> <!-- [m] -->
+<xacro:property name="uav_body_height" value="0.1" /> <!-- [m] -->
+<xacro:property name="uav_rolling_moment_coefficient" value="0.000001" />
+<xacro:property name="uav_body_inertia">
+  <inertia ixx="0.0347563" ixy="0.0" ixz="0.0" iyy="0.0458929" iyz="0.0" izz="0.0977" />
+</xacro:property>
+
+<xacro:property name="net_mass" value="1.0" /> <!-- [kg] -->
+<xacro:property name="net_body_width" value="3" /> <!-- [m] -->
+<xacro:property name="net_body_length" value="3" /> <!-- [m] -->
+<xacro:property name="net_body_height" value="0.02" /> <!-- [m] -->
+<xacro:property name="net_rolling_moment_coefficient" value="0.000001" />
+<xacro:property name="net_body_inertia">
+  <!-- I = m/12*(l^2 + w^2) -->
+  <inertia ixx="0.75" ixy="0.0" ixz="0.0" iyy="1.50" iyz="0.0" izz="0.75" />
+</xacro:property>
+<xacro:property name="net_color" value="GreyTransparent" />
+
+<!-- NET -->
+<link name="${namespace}/base_link">
+  <inertial>
+    <mass value="${net_mass}" />  <!-- [kg] -->
+    <origin xyz="0 0 0" />
+    <xacro:insert_block name="net_body_inertia" />
+  </inertial>
+
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="${net_body_length} ${net_body_width} ${net_body_height}" />
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="${net_body_length}/2 ${net_body_width}/2 ${net_body_height}/2" />
+    </geometry>
+  </collision>
+</link>
+
+  <gazebo reference="${namespace}/base_link">
+    <material>Gazebo/$(arg color)</material>
+  </gazebo>
+
+
+  <!-- Ground Truth -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/odometry_sensor.xacro"/>
+  <xacro:ground_truth namespace="${namespace}" parent_link="${namespace}/base_link" />
+
+<!--===================================================================-->
+<!--|                              uav 1                              |-->
+<!--===================================================================-->
+
+<!-- *********************** GAZEBO ROBOT DEFINITION ******************* -->
+<link name="${namespace}/uav1/base_link">
+  <inertial>
+    <mass value="${uav_mass}" />  <!-- [kg] -->
+    <origin xyz="-2 -2 0" />
+    <xacro:insert_block name="uav_body_inertia" />
+  </inertial>
+
+  <visual>
+    <origin xyz="-2 -2 0" rpy="0 0 0" />
+    <geometry>
+      <xacro:if value="${use_uav_mesh_file}">
+        <mesh filename="${uav_mesh_file}" scale="1 1 1" />
+      </xacro:if>
+      <xacro:unless value="${use_uav_mesh_file}">
+        <cylinder length="${uav_body_height}" radius="${uav_body_width}"/>
+      </xacro:unless>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="-2 -2 ${uav_body_height/2.0}" rpy="0 0 0" />
+    <geometry>
+      <cylinder length="${0.1}" radius="${uav_body_width}"/>
+    </geometry>
+  </collision>
+</link>
+
+  <gazebo reference="${namespace}/uav1/base_link">
+    <material>Gazebo/$(arg color)</material>
+  </gazebo>
+
+  <!-- ************************* ROTOR DYNAMICS ********************** -->
+
+  <!-- ROSflight_SIL -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/ROSflight_SIL.xacro"/>
+  <!-- <xacro:mikey_ROSflight_SIL namespace="${namespace}/uav1" parent_link="${namespace}/uav1/base_link"/> -->
+
+  <!-- Simplified Dynamics -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/multirotor_forces_and_moments.xacro"/>
+  <xacro:fleet_uav1_forces_and_moments namespace="${namespace}" parent_link="${namespace}/uav1/base_link" command_topic="${namespace}/extended_command"/>
+
+
+  <!-- ***************** SENSORS ******************* -->
+  <!-- Ground Truth -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/odometry_sensor.xacro"/>
+  <xacro:ground_truth namespace="${namespace}/uav1" parent_link="${namespace}/uav1/base_link" />
+
+  <!-- Mount an IMU -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/imu.xacro"/>
+  <xacro:IMU_ADIS16448
+    namespace="${namespace}/uav1"
+    parent_link="${namespace}/uav1/base_link"
+    imu_topic="imu"/>
+
+  <!--Enable Wind -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/wind.xacro"/>
+  <xacro:wind_param
+    namespace="${namespace}/uav1"
+    link_name="${namespace}/uav1/base_link"
+    wind_pub_topic="wind"/>
+
+  <!-- Mount an Altimeter -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/altimeter.xacro"/>
+  <xacro:Sonar_MB1030
+    namespace="${namespace}/uav1"
+    parent_link="${namespace}/uav1/base_link"
+    altimeter_topic="altimeter"/>
+
+  <!-- Mount an RGBD Camera -->
+  <!-- <xacro:include filename="$(find fcu_sim_plugins)/xacro/rgbd.xacro"/>
+  <xacro:xtion
+    namespace="${namespace}/uav1"
+    parent_link="${namespace}/uav1/base_link"/> -->
+
+  <!-- Laser Scanner -->
+  <!-- <xacro:include filename="$(find fcu_sim_plugins)/xacro/laser_scanner.xacro"/>
+  <xacro:hokuyo_UTM-30LX
+    namespace="${namespace}/uav1"
+    parent_link="${namespace}/uav1/base_link"
+    visualize="false"/> -->
+
+
+<!--===================================================================-->
+<!--|                              uav 2                              |-->
+<!--===================================================================-->
+
+<!-- *********************** GAZEBO ROBOT DEFINITION ******************* -->
+<link name="${namespace}/uav2/base_link">
+  <inertial>
+    <mass value="${uav_mass}" />  <!-- [kg] -->
+    <origin xyz="2 -2 0" />
+    <xacro:insert_block name="uav_body_inertia" />
+  </inertial>
+
+  <visual>
+    <origin xyz="2 -2 0" rpy="0 0 0" />
+    <geometry>
+      <xacro:if value="${use_uav_mesh_file}">
+        <mesh filename="${uav_mesh_file}" scale="1 1 1" />
+      </xacro:if>
+      <xacro:unless value="${use_uav_mesh_file}">
+        <cylinder length="${uav_body_height}" radius="${uav_body_width}"/>
+      </xacro:unless>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="2 -2 ${uav_body_height/2.0}" rpy="0 0 0" />
+    <geometry>
+      <cylinder length="${0.1}" radius="${uav_body_width}"/>
+    </geometry>
+  </collision>
+</link>
+
+  <gazebo reference="${namespace}/uav2/base_link">
+    <material>Gazebo/$(arg color)</material>
+  </gazebo>
+
+  <!-- ************************* ROTOR DYNAMICS ********************** -->
+
+  <!-- ROSflight_SIL -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/ROSflight_SIL.xacro"/>
+  <!-- <xacro:mikey_ROSflight_SIL namespace="${namespace}/uav2" parent_link="${namespace}/uav2/base_link"/> -->
+
+  <!-- Simplified Dynamics -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/multirotor_forces_and_moments.xacro"/>
+  <xacro:fleet_uav2_forces_and_moments namespace="${namespace}" parent_link="${namespace}/uav2/base_link" command_topic="${namespace}/extended_command"/>
+
+
+  <!-- ***************** SENSORS ******************* -->
+  <!-- Ground Truth -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/odometry_sensor.xacro"/>
+  <xacro:ground_truth namespace="${namespace}/uav2" parent_link="${namespace}/uav2/base_link" />
+
+  <!-- Mount an IMU -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/imu.xacro"/>
+  <xacro:IMU_ADIS16448
+    namespace="${namespace}/uav2"
+    parent_link="${namespace}/uav2/base_link"
+    imu_topic="imu"/>
+
+  <!--Enable Wind -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/wind.xacro"/>
+  <xacro:wind_param
+    namespace="${namespace}/uav2"
+    link_name="${namespace}/uav2/base_link"
+    wind_pub_topic="wind"/>
+
+  <!-- Mount an Altimeter -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/altimeter.xacro"/>
+  <xacro:Sonar_MB1030
+    namespace="${namespace}/uav2"
+    parent_link="${namespace}/uav2/base_link"
+    altimeter_topic="altimeter"/>
+
+  <!-- Mount an RGBD Camera -->
+ <!--  <xacro:include filename="$(find fcu_sim_plugins)/xacro/rgbd.xacro"/>
+  <xacro:xtion
+    namespace="${namespace}/uav2"
+    parent_link="${namespace}/uav2/base_link"/> -->
+
+  <!-- Laser Scanner -->
+ <!--  <xacro:include filename="$(find fcu_sim_plugins)/xacro/laser_scanner.xacro"/>
+  <xacro:hokuyo_UTM-30LX
+    namespace="${namespace}/uav2"
+    parent_link="${namespace}/uav2/base_link"
+    visualize="false"/> -->
+
+<!--===================================================================-->
+<!--|                              uav 3                              |-->
+<!--===================================================================-->
+
+<!-- *********************** GAZEBO ROBOT DEFINITION ******************* -->
+<link name="${namespace}/uav3/base_link">
+  <inertial>
+    <mass value="${uav_mass}" />  <!-- [kg] -->
+    <origin xyz="-2 2 0" />
+    <xacro:insert_block name="uav_body_inertia" />
+  </inertial>
+
+  <visual>
+    <origin xyz="-2 2 0" rpy="0 0 0" />
+    <geometry>
+      <xacro:if value="${use_uav_mesh_file}">
+        <mesh filename="${uav_mesh_file}" scale="1 1 1" />
+      </xacro:if>
+      <xacro:unless value="${use_uav_mesh_file}">
+        <cylinder length="${uav_body_height}" radius="${uav_body_width}"/>
+      </xacro:unless>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="-2 2 ${uav_body_height/2.0}" rpy="0 0 0" />
+    <geometry>
+      <cylinder length="${0.1}" radius="${uav_body_width}"/>
+    </geometry>
+  </collision>
+</link>
+
+  <gazebo reference="${namespace}/uav3/base_link">
+    <material>Gazebo/$(arg color)</material>
+  </gazebo>
+
+  <!-- ************************* ROTOR DYNAMICS ********************** -->
+
+  <!-- ROSflight_SIL -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/ROSflight_SIL.xacro"/>
+  <!-- <xacro:mikey_ROSflight_SIL namespace="${namespace}/uav3" parent_link="${namespace}/uav3/base_link"/> -->
+
+  <!-- Simplified Dynamics -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/multirotor_forces_and_moments.xacro"/>
+  <xacro:fleet_uav3_forces_and_moments namespace="${namespace}" parent_link="${namespace}/uav3/base_link" command_topic="${namespace}/extended_command"/>
+
+
+  <!-- ***************** SENSORS ******************* -->
+  <!-- Ground Truth -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/odometry_sensor.xacro"/>
+  <xacro:ground_truth namespace="${namespace}/uav3" parent_link="${namespace}/uav3/base_link" />
+
+  <!-- Mount an IMU -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/imu.xacro"/>
+  <xacro:IMU_ADIS16448
+    namespace="${namespace}/uav3"
+    parent_link="${namespace}/uav3/base_link"
+    imu_topic="imu"/>
+
+  <!--Enable Wind -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/wind.xacro"/>
+  <xacro:wind_param
+    namespace="${namespace}/uav3"
+    link_name="${namespace}/uav3/base_link"
+    wind_pub_topic="wind"/>
+
+  <!-- Mount an Altimeter -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/altimeter.xacro"/>
+  <xacro:Sonar_MB1030
+    namespace="${namespace}/uav3"
+    parent_link="${namespace}/uav3/base_link"
+    altimeter_topic="altimeter"/>
+
+  <!-- Mount an RGBD Camera -->
+ <!--  <xacro:include filename="$(find fcu_sim_plugins)/xacro/rgbd.xacro"/>
+  <xacro:xtion
+    namespace="${namespace}/uav3"
+    parent_link="${namespace}/uav3/base_link"/> -->
+
+  <!-- Laser Scanner -->
+  <!-- <xacro:include filename="$(find fcu_sim_plugins)/xacro/laser_scanner.xacro"/>
+  <xacro:hokuyo_UTM-30LX
+    namespace="${namespace}/uav3"
+    parent_link="${namespace}/uav3/base_link"
+    visualize="false"/> -->
+
+
+<!--===================================================================-->
+<!--|                              uav 4                              |-->
+<!--===================================================================-->
+
+<!-- *********************** GAZEBO ROBOT DEFINITION ******************* -->
+<link name="${namespace}/uav4/base_link">
+  <inertial>
+    <mass value="${uav_mass}" />  <!-- [kg] -->
+    <origin xyz="2 2 0" />
+    <xacro:insert_block name="uav_body_inertia" />
+  </inertial>
+
+  <visual>
+    <origin xyz="2 2 0" rpy="0 0 0" />
+    <geometry>
+      <xacro:if value="${use_uav_mesh_file}">
+        <mesh filename="${uav_mesh_file}" scale="1 1 1" />
+      </xacro:if>
+      <xacro:unless value="${use_uav_mesh_file}">
+        <cylinder length="${uav_body_height}" radius="${uav_body_width}"/>
+      </xacro:unless>
+    </geometry>
+  </visual>
+
+  <collision>
+    <origin xyz="2 2 ${uav_body_height/2.0}" rpy="0 0 0" />
+    <geometry>
+      <cylinder length="${0.1}" radius="${uav_body_width}"/>
+    </geometry>
+  </collision>
+</link>
+
+  <gazebo reference="${namespace}/uav4/base_link">
+    <material>Gazebo/$(arg color)</material>
+  </gazebo>
+
+  <!-- ************************* ROTOR DYNAMICS ********************** -->
+
+  <!-- ROSflight_SIL -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/ROSflight_SIL.xacro"/>
+  <!-- <xacro:mikey_ROSflight_SIL namespace="${namespace}/uav4" parent_link="${namespace}/uav4/base_link"/> -->
+
+  <!-- Simplified Dynamics -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/multirotor_forces_and_moments.xacro"/>
+  <xacro:fleet_uav4_forces_and_moments namespace="${namespace}" parent_link="${namespace}/uav4/base_link" command_topic="${namespace}/extended_command"/>
+
+
+  <!-- ***************** SENSORS ******************* -->
+  <!-- Ground Truth -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/odometry_sensor.xacro"/>
+  <xacro:ground_truth namespace="${namespace}/uav4" parent_link="${namespace}/uav4/base_link" />
+
+  <!-- Mount an IMU -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/imu.xacro"/>
+  <xacro:IMU_ADIS16448
+    namespace="${namespace}/uav4"
+    parent_link="${namespace}/uav4/base_link"
+    imu_topic="imu"/>
+
+  <!--Enable Wind -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/wind.xacro"/>
+  <xacro:wind_param
+    namespace="${namespace}/uav4"
+    link_name="${namespace}/uav4/base_link"
+    wind_pub_topic="wind"/>
+
+  <!-- Mount an Altimeter -->
+  <xacro:include filename="$(find fcu_sim_plugins)/xacro/altimeter.xacro"/>
+  <xacro:Sonar_MB1030
+    namespace="${namespace}/uav4"
+    parent_link="${namespace}/uav4/base_link"
+    altimeter_topic="altimeter"/>
+
+  <!-- Mount an RGBD Camera -->
+ <!--  <xacro:include filename="$(find fcu_sim_plugins)/xacro/rgbd.xacro"/>
+  <xacro:xtion
+    namespace="${namespace}/uav4"
+    parent_link="${namespace}/uav4/base_link"/> -->
+
+  <!-- Laser Scanner -->
+ <!--  <xacro:include filename="$(find fcu_sim_plugins)/xacro/laser_scanner.xacro"/>
+  <xacro:hokuyo_UTM-30LX
+    namespace="${namespace}/uav4"
+    parent_link="${namespace}/uav4/base_link"
+    visualize="false"/> -->
+
+
+  <joint type="revolute" name="corner1">
+    <axis xyz="1 1 1" />
+    <limit effort="10.0" velocity="10.0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="${namespace}/base_link"/>
+    <child link="${namespace}/uav1/base_link"/>
+  </joint>
+
+  <joint type="revolute" name="corner2">
+    <axis xyz="1 1 1" />
+    <limit effort="10.0" velocity="10.0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="${namespace}/base_link"/>
+    <child link="${namespace}/uav2/base_link"/>
+  </joint>
+
+  <joint type="revolute" name="corner3">
+    <axis xyz="1 1 1" />
+    <limit effort="10.0" velocity="10.0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="${namespace}/base_link"/>
+    <child link="${namespace}/uav3/base_link"/>
+  </joint>
+
+  <joint type="revolute" name="corner4">
+    <axis xyz="1 1 1" />
+    <limit effort="10.0" velocity="10.0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="${namespace}/base_link"/>
+    <child link="${namespace}/uav4/base_link"/>
+  </joint>
+
+
+
+  
+</robot>
