@@ -209,12 +209,14 @@ void InterceptController::computeControl()
     double now = ros::Time::now().toSec();
     double dt = now - prev_time_;
     prev_time_ = now;
-    static double tau = 0.0;
-    static Eigen::Vector3d z_r;
-    static Eigen::Vector3d z;
-    static Eigen::Vector3d error(0.0,0.0,0.0);
-    static const double epsilon = 0.5;
-    static Eigen::Vector3d target_d1(0.0,0.0,0.0); // for caluculating acceleration
+    static double tau = 0.0; // Path progress variable
+
+    static Eigen::Vector3d z_r; // Desired/reference position
+    static Eigen::Vector3d z; // Actual position
+
+    static Eigen::Vector3d error(0.0,0.0,0.0); // Error between desired and actual position
+    static const double epsilon = 0.5; // Minimum distance to switch waypoints
+    static Eigen::Vector3d target_d1(0.0,0.0,0.0); // for calculating acceleration
     Eigen::Vector3d target_pos(xt_.x, xt_.y, xt_.z);
 
 
@@ -223,12 +225,7 @@ void InterceptController::computeControl()
     {
       // Compute the average position/velocity of the individual multirotors
       computeFleetState();
-      if(resetting_) {
-        z << 0.0, 0.0, 0.0;
-      }
-      else {
-        z << fleet_state_.x, fleet_state_.y, fleet_state_.z;
-      }
+      z << fleet_state_.x, fleet_state_.y, fleet_state_.z;
 
       if(debug_print & COMPUTE_CONTROL) {
         ROS_INFO("============================= Computing Control ================================================");
@@ -264,7 +261,6 @@ void InterceptController::computeControl()
       }
 
       // Control the desired positions based on this waypoint path.
-      // -- Calculate smoothed trajectory through waypoints
 
       // Extract the distance to the next waypoint (if there is a next one...)
       Eigen::Vector3d dist_to_waypoint;
@@ -286,7 +282,7 @@ void InterceptController::computeControl()
 
           // Calculate taudot (delta change along path)
           double taudot = saturate(max_.velocity/(path_distance.norm())*saturate(((max_.pos_error - error.norm())/max_.pos_error),1.0, 0.0), 1.0, 0.0);
-          // double taudot = max_.velocity/(path_distance.norm())*((max_.pos_error - error.norm())/max_.pos_error);
+
           if(debug_print & COMPUTE_CONTROL) {
             ROS_INFO("Error: = %f", error.norm());
             ROS_INFO("dt=%f", dt);
@@ -295,7 +291,9 @@ void InterceptController::computeControl()
             ROS_INFO("Error correction = %f", ((max_.pos_error - error.norm())/max_.pos_error));
             ROS_INFO("taudot = %f", taudot);
           }
+
           tau += dt*taudot;
+
           if(debug_print & COMPUTE_CONTROL) ROS_INFO("tau = %f", tau);
 
           // Calculate desired position between waypoints
@@ -355,6 +353,7 @@ void InterceptController::computeControl()
       double d_rs = distance_start_rotation_;
       double d_rf = distance_finish_rotation_;
       double angle_gain = 0;
+
       // Ramp the angle gain from 0 to 1 in desired distance interval
       Eigen::Vector3d l = path_.waypoints[path_.waypoint_cnt - 1] - z;
       double L = l.norm();
@@ -369,9 +368,7 @@ void InterceptController::computeControl()
       // fleet_goal_.phi = phi_t*angle_gain;
       fleet_goal_.theta = theta_t*angle_gain;
       double delta_psi = psi_t - fleet_goal_.psi;
-      //- ROS_INFO("Delta_psi_target=%f", delta_psi);
       double delta_psi_sat = saturate(delta_psi, max_.psi_rate, -1.0*max_.psi_rate);
-      //- ROS_INFO("Delta_psi_saturated=%f", delta_psi_sat);
       fleet_goal_.psi += delta_psi_sat; // Start tracking yaw from beginning
 
       // Publish command
