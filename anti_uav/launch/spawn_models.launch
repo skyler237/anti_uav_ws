@@ -1,0 +1,62 @@
+<launch>
+  <arg name="fleet_name" default="fleet"/>
+  <arg name="net_size" default="6.0"/>
+  <arg name="net_size_half" default="3.0"/>
+
+
+  <!-- Set Up Fleet (net and 4 drones) -->
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="$(arg net_size_half)"/>
+    <arg name="y" value="-$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav1"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="1"/>
+  </include>
+
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="-$(arg net_size_half)"/>
+    <arg name="y" value="-$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav2"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="2"/>
+  </include>
+
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="-$(arg net_size_half)"/>
+    <arg name="y" value="$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav3"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="3"/>
+  </include>
+
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="$(arg net_size_half)"/>
+    <arg name="y" value="$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav4"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="4"/>
+  </include>
+
+
+  <!-- Set Up Intruding UAV -->
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="130.0"/>
+    <arg name="y" value="0.0"/>
+    <arg name="z" value="35.0"/>
+    <arg name="mav_name" value="$(arg intruding_uav_name)"/>
+    <arg name="color" value="Black"/>
+  </include>
+
+</launch>
