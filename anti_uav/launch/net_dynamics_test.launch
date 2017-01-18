@@ -1,0 +1,167 @@
+<launch>
+
+
+  <arg name="fleet_name" default="fleet"/>
+  <arg name="intruding_uav_name" default="intruder"/>
+  <arg name="net"  default="net"/>
+  <arg name="net_size" default="6.0"/>
+  <arg name="net_size_half" default="3.0"/>
+
+  <arg name="world_file" default="fast_basic.world"/>
+  <!-- <arg name="world_file" default="basic.world"/> -->
+
+  <arg name="fleet_x_P" value="3.0"/>
+  <arg name="fleet_x_I" value="0.06"/>
+  <arg name="fleet_x_D" value="2.5"/>
+
+  <arg name="fleet_y_P" value="5.0"/>
+  <arg name="fleet_y_I" value="0.08"/>
+  <arg name="fleet_y_D" value="3.5"/>
+
+  <arg name="fleet_z_P" value="3.0"/>
+  <arg name="fleet_z_I" value="0.05"/>
+  <arg name="fleet_z_D" value="2.5"/>
+
+  <!-- Start Simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Set Up Fleet (net and 4 drones) -->
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="$(arg net_size_half)"/>
+    <arg name="y" value="-$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav1"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="1"/>
+  </include>
+
+  <include file="$(find anti_uav)/launch/single_mav.launch">
+    <arg name="x" value="-$(arg net_size_half)"/>
+    <arg name="y" value="-$(arg net_size_half)"/>
+    <arg name="z" value="0.1"/>
+    <arg name="yaw" value="0"/>
+    <arg name="mav_name" value="$(arg fleet_name)_uav2"/>
+    <arg name="color" value="Blue"/>
+    <arg name="path" value="1"/>
+    <arg name="starting_node_id" value="2"/>
+  </include>
+
+
+  <!-- Joy -->
+  <node name="rc" pkg="fcu_common" type="joy" output="screen">
+    <param name="mav_name" value="$(arg fleet_name)"/>
+    <param name="F_axis" value="1"/>
+    <param name="x_axis" value="2"/>
+    <param name="y_axis" value="3"/>
+    <param name="z_axis" value="0"/>
+
+    <param name="x_sign" value="1"/>
+    <param name="y_sign" value="1"/>
+    <param name="z_sign" value="-1"/>
+    <param name="F_sign" value="1"/>
+
+    <param name="button_takeoff_" value="0"/>
+    <param name="button_mode_" value="1"/>
+    <param name="button_reset_" value="6"/>
+    <param name="button_pause_" value="7"/>
+
+    <remap from="extended_command" to="$(arg fleet_name)/uav1/extended_command"/>
+  </node>
+
+  <!-- <node name="fleet_rc" pkg="anti_uav" type="fleet_joy">
+      <param name="max_roll_rate" value="0.5*M_PI/180.0"/>
+      <param name="max_pitch_rate" value="0.5*M_PI/180.0"/>
+      <param name="max_yaw_rate" value="0.5*M_PI/180.0"/>
+      <remap from="fleet_goal" to="bleh"/>
+  </node>
+  <node name="joy" pkg="joy" type="joy_node">
+    <param name="autorepeat_rate" value="100"/>
+  </node> -->
+
+
+  <!-- Waypoint Manager -->
+  <!-- <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py" output="screen">
+    <param name="namespace" value="$(arg intruding_uav_name)"/>
+    <param name="path_type" value="random"/>
+    <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
+  </node> -->
+
+  <!-- UAV Position Controllers (for square vertices) -->
+  <!-- <node name="uav1_controller" pkg="ros_copter" type="controller">
+    <param name="model_number" value="1"/>
+    <param name="always_flying" value="true"/>
+
+    <param name="u/P" value="0.0"/>
+    <param name="u/I" value="0.0"/>
+    <param name="u/D" value="0.0"/>
+
+    <param name="v/P" value="0.0"/>
+    <param name="v/I" value="0.0"/>
+    <param name="v/D" value="0.0"/>
+
+    <param name="x_P" value="$(arg fleet_x_P)"/>
+    <param name="x_I" value="$(arg fleet_x_I)"/>
+    <param name="x_D" value="$(arg fleet_x_D)"/>
+
+    <param name="y_P" value="$(arg fleet_y_P)"/>
+    <param name="y_I" value="$(arg fleet_y_I)"/>
+    <param name="y_D" value="$(arg fleet_y_D)"/>
+
+    <param name="z_P" value="$(arg fleet_z_P)"/>
+    <param name="z_I" value="$(arg fleet_z_I)"/>
+    <param name="z_D" value="$(arg fleet_z_D)"/>
+
+    <param name="psi/P" value="0.0"/>
+    <param name="psi/I" value="0.0"/>
+    <param name="psi/D" value="0.0"/>
+
+    <param name="max_throttle" value="1.0"/>
+
+    <remap from="estimate" to="$(arg fleet_name)/uav1/ground_truth/odometry"/>
+    <remap from="extended_command" to="$(arg fleet_name)/uav1/extended_command"/>
+    <remap from="waypoint" to="uav1_goal"/>
+  </node> -->
+
+  <!-- <node name="uav2_controller" pkg="ros_copter" type="controller">
+    <param name="model_number" value="2"/>
+    <param name="always_flying" value="true"/>
+
+    <param name="u/P" value="0.0"/>
+    <param name="u/I" value="0.0"/>
+    <param name="u/D" value="0.0"/>
+
+    <param name="v/P" value="0.0"/>
+    <param name="v/I" value="0.0"/>
+    <param name="v/D" value="0.0"/>
+
+    <param name="x_P" value="$(arg fleet_x_P)"/>
+    <param name="x_I" value="$(arg fleet_x_I)"/>
+    <param name="x_D" value="$(arg fleet_x_D)"/>
+
+    <param name="y_P" value="$(arg fleet_y_P)"/>
+    <param name="y_I" value="$(arg fleet_y_I)"/>
+    <param name="y_D" value="$(arg fleet_y_D)"/>
+
+    <param name="z_P" value="$(arg fleet_z_P)"/>
+    <param name="z_I" value="$(arg fleet_z_I)"/>
+    <param name="z_D" value="$(arg fleet_z_D)"/>
+
+    <param name="psi/P" value="0.0"/>
+    <param name="psi/I" value="0.0"/>
+    <param name="psi/D" value="0.0"/>
+
+    <param name="max_throttle" value="1.0"/>
+
+    <remap from="estimate" to="$(arg fleet_name)/uav2/ground_truth/odometry"/>
+    <remap from="extended_command" to="$(arg fleet_name)/uav2/extended_command"/>
+    <remap from="waypoint" to="uav2_goal"/>
+  </node> -->
+
+
+</launch>
