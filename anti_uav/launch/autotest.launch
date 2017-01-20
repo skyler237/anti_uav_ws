@@ -10,17 +10,17 @@
   <arg name="world_file" default="fast_basic.world"/>
   <!-- <arg name="world_file" default="basic.world"/> -->
 
-  <arg name="fleet_x_P" value="3.0"/>
-  <arg name="fleet_x_I" value="0.06"/>
-  <arg name="fleet_x_D" value="2.5"/>
+  <arg name="fleet_x_P" value="1.5"/>
+  <arg name="fleet_x_I" value="0.1"/>
+  <arg name="fleet_x_D" value="0.2"/>
 
-  <arg name="fleet_y_P" value="5.0"/>
-  <arg name="fleet_y_I" value="0.08"/>
-  <arg name="fleet_y_D" value="3.5"/>
+  <arg name="fleet_y_P" value="2.0"/>
+  <arg name="fleet_y_I" value="0.15"/>
+  <arg name="fleet_y_D" value="1.0"/>
 
-  <arg name="fleet_z_P" value="3.0"/>
-  <arg name="fleet_z_I" value="0.05"/>
-  <arg name="fleet_z_D" value="2.5"/>
+  <arg name="fleet_z_P" value="1.0"/>
+  <arg name="fleet_z_I" value="0.1"/>
+  <arg name="fleet_z_D" value="1.0"/>
 
   <!-- Start Simulator -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -86,8 +86,9 @@
   </node>
 
   <!-- Waypoint Manager -->
-  <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py" output="screen">
+  <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py">
     <param name="namespace" value="$(arg intruding_uav_name)"/>
+    <!-- Possible Types: file, random, straight --> 
     <param name="path_type" value="random"/>
     <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
   </node>
@@ -113,7 +114,7 @@
      COMPUTE_FLEET_STATE 8
      TARGET_PREDICT 16
      ADAPTIVE RADIUS 32-->
-    <param name="debug_print" value="8"/>
+    <param name="debug_print" value="0"/>
 
     <!--
      DIRECT 0
