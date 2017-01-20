@@ -74,7 +74,7 @@
 
 
   <!-- UAV Position Controllers (for square vertices) -->
-  <node name="uav1_controller" pkg="ros_copter" type="controller">
+  <node name="uav1_controller" pkg="ros_copter" type="controller" output="screen">
     <param name="model_number" value="1"/>
     <param name="always_flying" value="true"/>
 
