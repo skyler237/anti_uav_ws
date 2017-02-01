@@ -150,7 +150,7 @@ do
 	fi
 
 	# Fix ros bags
-	~/scripts/fixAllBags
+	~/counter_uas/scripts/fixAllBags
 
 	printf "========================== End of Simluation #$i ==========================\n\n\n"
 done
@@ -210,5 +210,5 @@ if [ "$TEST_CRASHED" == "true" ]; then
 		fi		
 	done
 	
-	exec ~/scripts/autoTest $LAST_TEST_NUMBER $TEST_RUN_MAX && exit 0
+	exec ~/counter_uas/scripts/autoTest $LAST_TEST_NUMBER $TEST_RUN_MAX && exit 0
 fi
