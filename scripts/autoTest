@@ -1,0 +1,214 @@
+#!/bin/bash
+
+# Start roscore
+# IS_RUNNING=`pgrep roscore`
+# if [ "${IS_RUNNING:-null}" = null ]; then
+# 	roscore &
+# 	sleep 5
+# fi
+
+# rostopic pub /is_flying std_msgs/Bool "data: true" &
+
+# Loop for a certain number of times
+TEST_RUN_MIN=$1
+TEST_RUN_MAX=$2
+
+# Create and clear out results file
+RESULTS="results.txt"
+> $RESULTS
+
+TEST_CRASHED="false"
+LAST_TEST_NUMBER="0"
+
+for((i=TEST_RUN_MIN; i <= TEST_RUN_MAX; i++))
+do
+	printf "========================== Beginning Simulation #$i ==========================\n"
+
+	# Print results header to file
+	echo "Results for simulation #$i" >> $RESULTS
+	
+	# Start roslaunch
+	roslaunch anti_uav autotest.launch &
+	# Wait for ros to startup
+	IS_RUNNING=`pgrep rosout`
+	while [ "${IS_RUNNING:-null}" = null ]
+	do
+		IS_RUNNING=`pgrep rosout`
+		printf "ROS is starting...\r"
+	done
+	printf "\n"
+
+	# Export results to file
+	rostopic echo /results >> $RESULTS &
+	ROSTOPIC_PID=`echo $!`
+
+	# Start rosbag
+	rosbag record /fleet_pose /waypoint -e "(.*)odometry" "(.*)_goal" "(.*)path_coeff" --duration=60 -O auto_test"$i".bag &
+	ROSBAG_PID=`echo $!`
+
+	# Use results topic to see if the simulation is done
+	rosbag record /results --limit=1 -O results"$i".bag &
+	FINISHED_PID=`echo $!`
+
+	rostopic pub /is_flying std_msgs/Bool "data: true" &
+	sleep 5
+	rosservice call gazebo/unpause_physics 
+
+	(( UNPAUSE_WATCHDOG = 0 ))
+
+	# Wait for results
+	IS_RUNNING=`ps --no-headers $FINISHED_PID`
+	while [ "${IS_RUNNING:-null}" != null ]
+	do
+		IS_RUNNING=`ps --no-headers $FINISHED_PID`
+		GAZEBO_IS_RUNNING=`pgrep gz`
+
+		# If gazebo has crashed exit the loop and restart testing 
+		if [ "${GAZEBO_IS_RUNNING:-null}" == null ]; then
+			TEST_CRASHED="true"
+			LAST_TEST_NUMBER="$i"
+			printf "\n\nERROR: Gazebo has crashed!\n\n"
+			break
+		else
+			printf "Simulation #$i of $TEST_RUN_MAX is running...\r"	
+		fi
+
+		(( UNPAUSE_WATCHDOG++ ))
+		if [ "$UNPAUSE_WATCHDOG" == "300" ]; then
+			rosservice call gazebo/unpause_physics
+			printf "\n\nUnpausing physics...\n\n"
+		elif [ "$UNPAUSE_WATCHDOG" == "5000" ]; then
+			TEST_CRASHED="true"
+			LAST_TEST_NUMBER="$i"
+			printf "\n\nERROR: Test timed out!\n\n"
+			sleep 10
+			break
+		fi		
+	done
+	printf "\n" >> $RESULTS
+
+	# If gazebo has crashed, exit the loop and restart testing 
+	if [ "$TEST_CRASHED" == "true" ]; then
+		break
+	fi
+
+	# Kill rosbag, rostopic
+	kill $ROSBAG_PID
+	kill $ROSTOPIC_PID
+
+	# Kill roslaunch and gazebo
+	pkill roslaunch
+	# kill $(pgrep gzser*)
+	# kill $(pgrep gzcli*)
+	printf "\nWaiting for simulation to close...\r"
+
+	# Wait for ros to kill
+	IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+	(( KILL_TIMEOUT = 0 ))
+	while [ "${IS_RUNNING:-null}" != null ]
+	do
+		pkill -9 roslaunch
+		pkill -9 rostopic
+		pkill -9 rosbag
+		pkill -9 rosmaster
+		pkill -9 rosout
+		pkill -9 record
+
+		GAZEBO_RUNNING=`pgrep gzser``pgrep gzcli`
+		if [ "${GAZEBO_RUNNING:-null}" != null ]; then
+			kill $(pgrep gzser*)
+			kill $(pgrep gzcli*)
+		fi	
+
+		IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+		printf "Waiting for simulation to close...\r"
+
+		(( KILL_TIMEOUT++ ))
+		if [ "$KILL_TIMEOUT" == "3000" ]; then
+			# Try to kill EVERYTHING!
+			pkill -9 roslaunch
+			pkill -9 rostopic
+			pkill -9 rosbag
+			pkill -9 rosmaster
+			pkill -9 rosout
+			pkill -9 record			
+			kill $(pgrep gzser*)
+			kill $(pgrep gzcli*)
+			printf "\nAttempting to kill all programs...\n\n"
+		elif [ "$KILL_TIMEOUT" == "5000" ]; then
+			TEST_CRASHED="true"
+			LAST_TEST_NUMBER="$i"
+			printf "\n\nERROR: Killing simulation timed out!\n\n"
+			sleep 10
+			break
+		fi		
+	done
+
+	# If gazebo has crashed, exit the loop and restart testing 
+	if [ "$TEST_CRASHED" == "true" ]; then
+		break
+	fi
+
+	# Fix ros bags
+	~/scripts/fixAllBags
+
+	printf "========================== End of Simluation #$i ==========================\n\n\n"
+done
+
+# If gazebo has crashed, restart testing 
+
+if [ "$TEST_CRASHED" == "true" ]; then
+	printf "Re-starting the autoTest at test number $LAST_TEST_NUMBER\n\n"
+	pkill roslaunch
+	printf "\nWaiting for simulation to close...\r"
+
+	# Wait for ros to kill
+	IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+	(( KILL_TIMEOUT = 0 ))
+	while [ "${IS_RUNNING:-null}" != null ]
+	do
+		pkill -9 roslaunch
+		pkill -9 rostopic
+		pkill -9 rosbag
+		pkill -9 rosmaster
+		pkill -9 rosout
+		pkill -9 record
+
+		GAZEBO_RUNNING=`pgrep gzser``pgrep gzcli`
+		if [ "${GAZEBO_RUNNING:-null}" != null ]; then
+			kill $(pgrep gzser*)
+			kill $(pgrep gzcli*)
+		fi	
+
+		IS_RUNNING=`pgrep ros`
+		printf "Waiting for simulation to close...\r"
+
+		(( KILL_TIMEOUT++ ))
+		if [ "$KILL_TIMEOUT" == "3000" ]; then
+			# Try to kill EVERYTHING!
+			pkill -9 roslaunch
+			pkill -9 rostopic
+			pkill -9 rosbag
+			pkill -9 rosmaster
+			pkill -9 rosout
+			pkill -9 record			
+			kill $(pgrep gzser*)
+			kill $(pgrep gzcli*)
+			printf "\nAttempting to kill all programs...\n\n"
+		elif [ "$KILL_TIMEOUT" == "5000" ]; then
+			pkill -9 roslaunch
+			pkill -9 rostopic
+			pkill -9 rosbag
+			pkill -9 rosmaster
+			pkill -9 rosout
+			pkill -9 record			
+			kill -9 $(pgrep gzser*)
+			kill -9 $(pgrep gzcli*)
+			printf "\n\nERROR: Killing simulation timed out!\n\n"
+			sleep 10
+			break
+		fi		
+	done
+	
+	exec ~/scripts/autoTest $LAST_TEST_NUMBER $TEST_RUN_MAX && exit 0
+fi

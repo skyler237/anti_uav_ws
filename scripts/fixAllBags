@@ -1,0 +1,20 @@
+#!/bin/bash
+
+fixBag() { 
+	rosbag reindex $1
+	rosbag fix $1 $2
+	rm *.orig.*
+	rm $1
+}
+
+pattern="*.bag.active"
+files=( $pattern )
+cnt="${#files[@]}"
+
+for (( i=0; i<${cnt}; i++ ));
+do
+	filename=${files[i]}
+	new_name=`echo $filename | cut -d "." -f -2`
+
+	fixBag $filename $new_name 
+done

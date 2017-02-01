@@ -1,0 +1,21 @@
+Results for simulation #28
+header: 
+  seq: 0
+  stamp: 
+    secs: 37
+    nsecs: 470000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 60.2835061047
+  y: 3.98829872764
+  z: -9.77118854704
+intercept_point: 
+  x: -0.223544900737
+  y: 1.09110363506
+  z: 0.0
+intercept_radius: 61.2003575205
+intercept_time: 37.47
+---
+
