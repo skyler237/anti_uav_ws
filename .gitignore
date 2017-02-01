@@ -1,1 +1,3 @@
 *.gch
+/anti_uav_ws/devel/
+/anti_uav_ws/build/
