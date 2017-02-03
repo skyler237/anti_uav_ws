@@ -191,6 +191,7 @@ private:
   Eigen::Vector3d saturate_vector(Eigen::Vector3d vector, double max, double min);
   double sgn(double x);
   double min(double x, double y);
+  double tustinDerivative(double xdot, double x, double x_prev, double dt, double tau);
 };
 }
 

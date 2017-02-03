@@ -1039,5 +1039,9 @@ double InterceptController::min(double x, double y) {
   return (x < y) ? x : y;
 }
 
+double InterceptController::tustinDerivative(double xdot, double x, double x_prev, double dt, double tau) {
+  return (2.0*tau - dt)/(2.0*tau + dt)*xdot + 2.0/(2.0*tau + dt)*(x - prev_x);
+}
+
 
 } // namespace intercept_controller
