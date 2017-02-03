@@ -1,57 +1,67 @@
-path(path,'skyler')
+path(path,'skyler');
+% test_path = 'skyler/recent_tests/analysis/autotest/test7_1-12-17/';
+test_path = 'skyler/recent_tests/analysis/autotest/test12/';
 
-test_path = 'skyler/recent_tests/analysis/autotest/test11/';
+results_file = strcat(test_path,'results.csv');
+results = csvread(results_file);
 
-FileList = dir(strcat(test_path,'results*.bag'));
-N = size(FileList,1);
+N = size(results,2);
+% successes   =   results(1,:);
+% points      =   results(2:3,:);
+% positions   =   results(5:7,:);
+% distances   =   results(8,:);
+% times       =   results(9,:);
+
+% % Use this for tests 13 and later
+test_numbers =  results(1,:);
+successes   =   results(2,:);
+points      =   results(3:4,:);
+positions   =   results(6:8,:);
+distances   =   results(9,:);
+times       =   results(10,:);
+
 
 net_width = 6;
-
-times = [];
-points = [];
-positions = [];
-distances = [];
-successes = [];
-test_numbers = [];
 
 figure(1), clf
 hold on
 axis equal
 rectangle('Position', [-net_width/2 -net_width/2 net_width, net_width])
 
-for k=1:N
-   bagfile = FileList(k).name;
-   fprintf('Processing file: %s\n\r', strcat(test_path,bagfile));
+% Remove all NaN entries
+i=1;
+while(i <= size(points,2))
+   if (isnan(points(1,i)) || isnan(points(2,i)))
+       
+       results(:,i) = [];
+       test_numbers(:,i) = [];
+       successes(:,i) = [];
+       points(:,i) = [];
+       positions(:,i) = [];
+       distances(:,i) = [];
+       times(:,i) = [];
+       
+   else
+       i = i + 1;
+   end   
+end
+
+for k=1:size(successes,2)
    
-   try
-    data = processAllTopics(strcat(test_path,bagfile));
-    data = data.results;
-   catch
-    continue
-   end
-   
-   strings = split(bagfile, {'results','.bag'});
-   test_number = str2double(strings(2));
-   isSuccess = data.isIntercept;
-   int_point = [data.intercept_point];
-   int_position = [data.intercept_pose];
-   distance = data.intercept_radius;
-   time = data.intercept_time;
+   isSuccess = successes(k);
+   int_point = points(:,k);
    
    if(isSuccess)
        plot(int_point(1), int_point(2),'g+')
    else
        plot(int_point(1), int_point(2),'r+')
    end
-   
-   test_numbers = [test_numbers, test_number];
-   successes = [successes,isSuccess];
-   points = [points, int_point];
-   positions = [positions, int_position];
-   distances = [distances, distance];
-   times = [times,time];
-   
+      
 end
+
+
+
+N = size(results,2);
 
 fprintf('============ RESULTS =============\n');
 fprintf('Out of %d simulations, %d were successful\n', N, sum(successes));
@@ -60,8 +70,6 @@ fprintf('Success rate = %f\n\n', sum(successes)/N);
 fprintf('Average point = (%f, %f)\n', mean(points(1,:)), mean(points(2,:)));
 fprintf('Average intercept time = %f\n', mean(times));
 fprintf('Average intercept radius = %f\n\n', mean(distances));
-
-results = [test_numbers;successes;points;positions;distances;times];
 
 format compact
 [outliers, success_outliers, failed_inliers, ...
@@ -73,7 +81,7 @@ removed_tests = [removeFaultyTests(test_path, possible_failed_mistakes, possible
 result_index = 1;
 test_index = 1;
 % Remove all the results for the faulty tests that were deleted
-while (result_index <= size(results,2) && test_index <= size(removed_tests,2))
+while (result_index <= size(results,2) && test_index <= removed_tests(test_index))
    % Check if the result number matches the removed test number
    if(results(1,result_index) == removed_tests(test_index))
       % If so, delete the data and move to the next removed test
@@ -85,8 +93,6 @@ while (result_index <= size(results,2) && test_index <= size(removed_tests,2))
    end
 end
 
-results = sortrows(results')';
+% Write the results back to the file
 results_file = strcat(test_path,'results.csv');
 csvwrite(results_file,results)
-
-
