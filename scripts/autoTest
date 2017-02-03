@@ -8,6 +8,26 @@
 # fi
 
 # rostopic pub /is_flying std_msgs/Bool "data: true" &
+getAllRunningProcesses()
+{
+	IS_RUNNING="`pgrep ros` `pgrep record` `pgrep gz`"
+	IS_RUNNING="$IS_RUNNING `pgrep fleet` `pgrep controller` `pgrep python` `pgrep intercept` `pgrep sim_analysis` `pgrep joy`"
+
+	echo $IS_RUNNING
+}
+
+formatSeconds()
+{
+	dt=$1
+	dd=$(echo "$dt/86400" | bc )
+	dt2=$(echo "$dt-86400*$dd" | bc -l)
+	dh=$(echo "$dt2/3600" | bc )
+	dt3=$(echo "$dt2-3600*$dh" | bc -l)
+	dm=$(echo "$dt3/60" | bc )
+	ds=$(echo "$dt3-60*$dm" | bc -l)
+
+	printf "%d:%02d:%02d:%02.4f" $dd $dh $dm $ds
+}
 
 # Loop for a certain number of times
 TEST_RUN_MIN=$1
@@ -20,9 +40,14 @@ RESULTS="results.txt"
 TEST_CRASHED="false"
 LAST_TEST_NUMBER="0"
 
+TOTAL_RUNTIME="0"
+AVERAGE_RUNTIME="0"
+ESTIMATED_REMAINING_TIME=$(echo "($TEST_RUN_MAX - $TEST_RUN_MIN)*19" | bc )
+START_TIME=`date +%s.%N`
+
 for((i=TEST_RUN_MIN; i <= TEST_RUN_MAX; i++))
-do
-	printf "========================== Beginning Simulation #$i ==========================\n"
+do	
+	printf "========================== Beginning Simulation #$i ==========================\n"	
 
 	# Print results header to file
 	echo "Results for simulation #$i" >> $RESULTS
@@ -70,7 +95,9 @@ do
 			printf "\n\nERROR: Gazebo has crashed!\n\n"
 			break
 		else
-			printf "Simulation #$i of $TEST_RUN_MAX is running...\r"	
+			FORMATTED_EST_TIME=$(formatSeconds $ESTIMATED_REMAINING_TIME)
+			FORMATTED_AVG_TIME=$(formatSeconds $AVERAGE_RUNTIME)
+			printf "Simulation #$i of $TEST_RUN_MAX is running...| Est. remaining time=$FORMATTED_EST_TIME | Avg. sim time=$FORMATTED_AVG_TIME\r"	
 		fi
 
 		(( UNPAUSE_WATCHDOG++ ))
@@ -103,16 +130,17 @@ do
 	printf "\nWaiting for simulation to close...\r"
 
 	# Wait for ros to kill
-	IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+	IS_RUNNING=`getAllRunningProcesses`
 	(( KILL_TIMEOUT = 0 ))
 	while [ "${IS_RUNNING:-null}" != null ]
 	do
-		pkill -9 roslaunch
-		pkill -9 rostopic
-		pkill -9 rosbag
-		pkill -9 rosmaster
-		pkill -9 rosout
-		pkill -9 record
+		# pkill -9 roslaunch
+		# pkill -9 rostopic
+		# pkill -9 rosbag
+		# pkill -9 rosmaster
+		# pkill -9 rosout
+		# pkill -9 record
+		kill -9 $IS_RUNNING
 
 		GAZEBO_RUNNING=`pgrep gzser``pgrep gzcli`
 		if [ "${GAZEBO_RUNNING:-null}" != null ]; then
@@ -120,20 +148,22 @@ do
 			kill $(pgrep gzcli*)
 		fi	
 
-		IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+		IS_RUNNING=`getAllRunningProcesses`
 		printf "Waiting for simulation to close...\r"
 
 		(( KILL_TIMEOUT++ ))
 		if [ "$KILL_TIMEOUT" == "3000" ]; then
 			# Try to kill EVERYTHING!
-			pkill -9 roslaunch
-			pkill -9 rostopic
-			pkill -9 rosbag
-			pkill -9 rosmaster
-			pkill -9 rosout
-			pkill -9 record			
-			kill $(pgrep gzser*)
-			kill $(pgrep gzcli*)
+			# pkill -9 roslaunch
+			# pkill -9 rostopic
+			# pkill -9 rosbag
+			# pkill -9 rosmaster
+			# pkill -9 rosout
+			# pkill -9 record			
+			# kill $(pgrep gzser*)
+			# kill $(pgrep gzcli*)
+			kill -9 $IS_RUNNING
+
 			printf "\nAttempting to kill all programs...\n\n"
 		elif [ "$KILL_TIMEOUT" == "5000" ]; then
 			TEST_CRASHED="true"
@@ -152,7 +182,16 @@ do
 	# Fix ros bags
 	~/counter_uas/scripts/fixAllBags
 
+	
 	printf "========================== End of Simluation #$i ==========================\n\n\n"
+
+	END_TIME=`date +%s.%N`
+	#Calculate average runtime per simulation and total estimated remaining time 
+	TOTAL_RUNTIME=$(echo "($TOTAL_RUNTIME + ($END_TIME-$START_TIME))" | bc -l)
+	START_TIME=$END_TIME
+
+	AVERAGE_RUNTIME=$(echo "($TOTAL_RUNTIME)/($i+1 - $TEST_RUN_MIN)" | bc -l)
+	ESTIMATED_REMAINING_TIME=$(echo "$AVERAGE_RUNTIME*($TEST_RUN_MAX - $i+1)" | bc -l)
 done
 
 # If gazebo has crashed, restart testing 
@@ -163,16 +202,17 @@ if [ "$TEST_CRASHED" == "true" ]; then
 	printf "\nWaiting for simulation to close...\r"
 
 	# Wait for ros to kill
-	IS_RUNNING=`pgrep ros``pgrep record``pgrep gz`
+	IS_RUNNING=`getAllRunningProcesses`
 	(( KILL_TIMEOUT = 0 ))
 	while [ "${IS_RUNNING:-null}" != null ]
 	do
-		pkill -9 roslaunch
-		pkill -9 rostopic
-		pkill -9 rosbag
-		pkill -9 rosmaster
-		pkill -9 rosout
-		pkill -9 record
+		# pkill -9 roslaunch
+		# pkill -9 rostopic
+		# pkill -9 rosbag
+		# pkill -9 rosmaster
+		# pkill -9 rosout
+		# pkill -9 record
+		kill -9 $IS_RUNNING
 
 		GAZEBO_RUNNING=`pgrep gzser``pgrep gzcli`
 		if [ "${GAZEBO_RUNNING:-null}" != null ]; then
@@ -180,30 +220,32 @@ if [ "$TEST_CRASHED" == "true" ]; then
 			kill $(pgrep gzcli*)
 		fi	
 
-		IS_RUNNING=`pgrep ros`
+		IS_RUNNING=`getAllRunningProcesses`
 		printf "Waiting for simulation to close...\r"
 
 		(( KILL_TIMEOUT++ ))
-		if [ "$KILL_TIMEOUT" == "3000" ]; then
+		if [ "$KILL_TIMEOUT" == "3000" ]; then # Re-attempt to kill all processes
 			# Try to kill EVERYTHING!
-			pkill -9 roslaunch
-			pkill -9 rostopic
-			pkill -9 rosbag
-			pkill -9 rosmaster
-			pkill -9 rosout
-			pkill -9 record			
-			kill $(pgrep gzser*)
-			kill $(pgrep gzcli*)
+			# pkill -9 roslaunch
+			# pkill -9 rostopic
+			# pkill -9 rosbag
+			# pkill -9 rosmaster
+			# pkill -9 rosout
+			# pkill -9 record			
+			# kill $(pgrep gzser*)
+			# kill $(pgrep gzcli*)
+			kill -9 $IS_RUNNING
 			printf "\nAttempting to kill all programs...\n\n"
-		elif [ "$KILL_TIMEOUT" == "5000" ]; then
-			pkill -9 roslaunch
-			pkill -9 rostopic
-			pkill -9 rosbag
-			pkill -9 rosmaster
-			pkill -9 rosout
-			pkill -9 record			
-			kill -9 $(pgrep gzser*)
-			kill -9 $(pgrep gzcli*)
+		elif [ "$KILL_TIMEOUT" == "5000" ]; then # Timed-out -- try to kill everything one more time and exit loop
+			# pkill -9 roslaunch
+			# pkill -9 rostopic
+			# pkill -9 rosbag
+			# pkill -9 rosmaster
+			# pkill -9 rosout
+			# pkill -9 record			
+			# kill -9 $(pgrep gzser*)
+			# kill -9 $(pgrep gzcli*)
+			kill -9 $IS_RUNNING
 			printf "\n\nERROR: Killing simulation timed out!\n\n"
 			sleep 10
 			break
