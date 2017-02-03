@@ -1,6 +1,6 @@
 path(path,'skyler')
 %bagfile = 'skyler/recent_tests/adaptive_plot_radius/net_margin_third_not_moving_test.bag';
-bagfile = 'skyler/recent_tests/analysis/autotest/test16/auto_test68.bag';
+bagfile = 'skyler/recent_tests/analysis/autotest/test16/auto_test2593.bag';
 % bagfile = 'skyler/recent_tests/analysis/PIDtesting/auto_test28.bag';
 data = processAllTopics(bagfile);
 

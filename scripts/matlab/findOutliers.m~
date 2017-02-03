@@ -18,7 +18,7 @@ function [outliers, success_outliers, failed_inliers, possible_failed_mistakes, 
     success_outlier_margin = net_edge*1.05;
     failed_inliers_margin = net_edge*0.95;
     possible_failed_mistakes_margin = 50;
-    possible_success_mistakes_margin = 5;
+    possible_success_mistakes_margin = 6;
     
     outliers = [];
     success_outliers = [];
@@ -44,8 +44,6 @@ function [outliers, success_outliers, failed_inliers, possible_failed_mistakes, 
             end
         end        
     end
-    
-    
 
     fprintf('General Outliers: (more than %f m beyond net edge)\n', general_outlier_margin - net_edge);
     fprintf('       Point #:   X:       Y:\n');

@@ -1,6 +1,6 @@
 path(path,'skyler');
 % test_path = 'skyler/recent_tests/analysis/autotest/test7_1-12-17/';
-test_path = 'skyler/recent_tests/analysis/autotest/test12b/';
+test_path = 'skyler/recent_tests/analysis/autotest/test16/';
 
 results_file = strcat(test_path,'results.csv');
 results = csvread(results_file);
@@ -72,4 +72,8 @@ fprintf('Average intercept time = %f\n', mean(times));
 fprintf('Average intercept radius = %f\n\n', mean(distances));
 
 format compact
-findOutliers(results);
+[outliers, success_outliers, failed_inliers, ...
+    possible_failed_mistakes, possible_success_mistakes] = findOutliers(results);
+
+removeFaultyTests(test_path, possible_failed_mistakes, possible_success_mistakes);
+removeFaultyTests(test_path, outliers, success_outliers);

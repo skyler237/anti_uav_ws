@@ -23,8 +23,12 @@ for k=1:N
    bagfile = FileList(k).name;
    fprintf('Processing file: %s\n\r', strcat(test_path,bagfile));
    
-   data = processAllTopics(strcat(test_path,bagfile));
-   data = data.results;
+   try
+    data = processAllTopics(strcat(test_path,bagfile));
+    data = data.results;
+   catch
+    continue
+   end
    
    strings = split(bagfile, {'results','.bag'});
    test_number = str2double(strings(2));
@@ -58,10 +62,14 @@ fprintf('Average intercept time = %f\n', mean(times));
 fprintf('Average intercept radius = %f\n\n', mean(distances));
 
 results = [test_numbers;successes;points;positions;distances;times];
+results = sortrows(results')';
 results_file = strcat(test_path,'results.csv');
 csvwrite(results_file,results)
 
 format compact
 findOutliers(results);
+
+removeFaultyTests(test_path, possible_failed_mistakes, possible_success_mistakes);
+removeFaultyTests(test_path, outliers, success_outliers);
 
 
