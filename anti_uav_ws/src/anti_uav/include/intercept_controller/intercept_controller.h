@@ -17,6 +17,8 @@
 
 #define MAX_WAYPOINT_CNT 20
 
+using namespace Eigen;
+
 namespace intercept_controller
 {
 
@@ -192,6 +194,7 @@ private:
   double sgn(double x);
   double min(double x, double y);
   double tustinDerivative(double xdot, double x, double x_prev, double dt, double tau);
+  Vector3d tustinDerivativeVector(Vector3d xdot, Vector3d x, Vector3d x_prev, double dt, double tau);
 };
 }
 

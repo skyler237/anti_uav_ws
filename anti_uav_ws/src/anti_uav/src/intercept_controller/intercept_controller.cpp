@@ -382,6 +382,12 @@ void InterceptController::computeProNavControl()
   double dt = now - prev_time_;
   prev_time_ = now;
 
+  double flyby_distance_ = 10.0;
+  double takeoff_height_ = 5.0;
+  double takeoff_velocity_ = 5.0;
+  double vel_control_constant_ = 2.0;
+  double accel_control_constant_ = 1.0;
+
 
   Eigen::Vector3d v_i;
   static Eigen::Vector3d a_i;
@@ -437,7 +443,8 @@ void InterceptController::computeProNavControl()
       Eigen::Vector3d ldot = v_t - v_i; // line of sight velocity vector
 
       // Compute target acceleration
-      Eigen::Vector3d a_t = (v_t - v_t_prev)/dt;
+      // Eigen::Vector3d a_t = (v_t - v_t_prev)/dt;
+      Eigen::Vector3d a_t = tustinDerivativeVector(a_t, v_t, v_t_prev, dt, 0.05);
 
       // Compute line of sight acceleration vector
       Eigen::Vector3d lddot = a_t - a_i; // line of sight acceleration vector
@@ -486,22 +493,26 @@ void InterceptController::computeProNavControl()
       ROS_INFO("a_i vel: x=%f, y=%f, z=%f", vel_component(0), vel_component(1), vel_component(2));
       ROS_INFO("a_i accel: x=%f, y=%f, z=%f", accel_component(0), accel_component(1), accel_component(2));
 
-      a_i = vel_component + accel_component; // Interception Control acceleration
+      // a_i = vel_component + accel_component; // Interception Control acceleration
+      a_i = vel_component;
 
       a_i(0) = saturate(a_i(0), max_.acceleration, -1.0*max_.acceleration);
       a_i(1) = saturate(a_i(1), max_.acceleration, -1.0*max_.acceleration);
       a_i(2) = saturate(a_i(2), max_.acceleration, -1.0*max_.acceleration);
 
-      fleet_state_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
-      fleet_state_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
-      fleet_state_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+      // fleet_state_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
+      // fleet_state_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
+      // fleet_state_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
 
       // //- ROS_INFO("Acceleration vector: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
     }
     else { // First "takeoff" to a specified height, before transferring to pronav control.
-      fleet_state_.xdot = 0;
-      fleet_state_.ydot = 0;
-      fleet_state_.zdot = saturate(-1.0*takeoff_velocity_, max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.xdot = 0;
+      fleet_goal_.ydot = 0;
+      fleet_goal_.zdot = saturate(-1.0*takeoff_velocity_, max_.velocity, -1.0*max_.velocity);
     }
 
 
@@ -510,9 +521,9 @@ void InterceptController::computeProNavControl()
     // fleet_state_.thetadot += msg->axes[axes_.pitch]*max_.thetadot_rate;
     // fleet_state_.psidot += msg->axes[axes_.yaw]*max_.psidot_rate;
 
-    fleet_state_.x += fleet_state_.xdot*dt;
-    fleet_state_.y += fleet_state_.ydot*dt;
-    fleet_state_.z += fleet_state_.zdot*dt;
+    fleet_goal_.x += fleet_goal_.xdot*dt;
+    fleet_goal_.y += fleet_goal_.ydot*dt;
+    fleet_goal_.z += fleet_goal_.zdot*dt;
     // fleet_state_.phi += fleet_state_.phidot*dt;
     // fleet_state_.theta += fleet_state_.thetadot*dt;
     // fleet_state_.psi += fleet_state_.psidot*dt;
@@ -565,49 +576,6 @@ void InterceptController::computeProNavControl()
 
 
     publishCommand();
-
-
-    /*
-    // Previous Controller Computations
-    // Figure out desired velocities (in inertial frame)
-    // By running the position controllers
-    double pndot_c = PID_x_.computePID(xt_.pn, xhat_.pn, dt);
-    double pedot_c = PID_y_.computePID(xt_.pe, xhat_.pe, dt);
-    double az_c = saturate(PID_z_.computePID(xt_.pd, xhat_.pd, dt), 1.0, -1.0);
-
-    // Rotate into body frame
-    /// TODO: Include pitch and roll in this mapping
-    double u_c = saturate(pndot_c*cos(xhat_.psi) + pedot_c*sin(xhat_.psi), max_.u, -1.0*max_.u);
-    double v_c = saturate(-pndot_c*sin(xhat_.psi) + pedot_c*cos(xhat_.psi), max_.v, -1.0*max_.v);
-
-//    double u_c = xt_.pn;
-//    double v_c = xt_.pe;
-
-    double ax_c = saturate(PID_u_.computePID(u_c, xhat_.u, dt), max_.roll, -max_.roll);
-    double ay_c = saturate(PID_v_.computePID(v_c, xhat_.v, dt), max_.pitch, -max_.pitch);
-
-    // Model inversion (m[ax;ay;az] = m[0;0;g] + R'[0;0;-T]
-    double total_acc_c = sqrt((1.0-az_c)*(1.0-az_c) + ax_c*ax_c + ay_c*ay_c); // (in g's)
-    double thrust = total_acc_c*thrust_eq_; // calculate the total thrust in normalized units
-    double phi_c = asin(ay_c / total_acc_c);
-    double theta_c = -1.0*asin(ax_c / total_acc_c);
-
-//    std::printf("z_c = %0.02f\t, z = %0.02f\t, az_c = %0.02f\t, total = %0.02f\t, thrust = %0.02f\n",
-//                xt_.pd, xhat_.pd, az_c, total_acc_c, thrust);
-//    std::printf("u_c: = %0.02f,\t u = %0.02f,\t out = %0.04f,\t theta_c = %0.04f, dt = %0.04f\n", u_c, xhat_.u, ax_c, theta_c, dt);
-
-    // For now, just command yaw to be in the direction of travel
-    double psi_c = atan2(xt_.pn - xhat_.pn, xt_.pe - xhat_.pe);
-    double r_c = saturate(PID_psi_.computePID(psi_c, xhat_.psi, dt), max_.yaw_rate, -max_.yaw_rate);
-
-    // Save message for publishing
-    // Be sure to add the feed-forward term for thrust
-    command_msg_.mode = fcu_common::ExtendedCommand::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
-    command_msg_.F = saturate(thrust, max_.throttle, 0.0);
-    command_msg_.x = phi_c;
-    command_msg_.y = theta_c;
-    command_msg_.z = r_c;
-    */
   }
 
 }
@@ -1040,7 +1008,15 @@ double InterceptController::min(double x, double y) {
 }
 
 double InterceptController::tustinDerivative(double xdot, double x, double x_prev, double dt, double tau) {
-  return (2.0*tau - dt)/(2.0*tau + dt)*xdot + 2.0/(2.0*tau + dt)*(x - prev_x);
+  return (2.0*tau - dt)/(2.0*tau + dt)*xdot + 2.0/(2.0*tau + dt)*(x - x_prev);
+}
+
+Vector3d InterceptController::tustinDerivativeVector(Vector3d xdot, Vector3d x, Vector3d x_prev, double dt, double tau) {
+  Vector3d derivative;
+  derivative(0) = tustinDerivative(xdot(0), x(0), x_prev(0), dt, tau);
+  derivative(1) = tustinDerivative(xdot(1), x(1), x_prev(1), dt, tau);
+  derivative(2) = tustinDerivative(xdot(2), x(2), x_prev(2), dt, tau);
+  return derivative;
 }
 
 
