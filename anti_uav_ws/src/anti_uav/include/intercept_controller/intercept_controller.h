@@ -184,6 +184,7 @@ private:
   void computeFleetState();
 
   void computeControl();
+  void computeProNavControl();
   void resetStates();
   void publishCommand();
   double saturate(double x, double max, double min);

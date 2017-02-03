@@ -376,6 +376,242 @@ void InterceptController::computeControl()
     }
 }
 
+void InterceptController::computeProNavControl()
+{
+  double now = ros::Time::now().toSec();
+  double dt = now - prev_time_;
+  prev_time_ = now;
+
+
+  Eigen::Vector3d v_i;
+  static Eigen::Vector3d a_i;
+
+  static Eigen::Vector3d v_t;
+  static Eigen::Vector3d v_t_prev;
+  v_t_prev = v_t; // Update previous value before assigning new one
+
+
+  // static Eigen::Vector3d l;
+  // static Eigen::Vector3d prev_l;
+  // Eigen::Vector3d dl =  l - prev_l;
+  // prev_l = l;
+
+
+
+  if(dt > 0.0)
+  {
+    // Compute line of sight position vector
+    Eigen::Vector3d p_i(fleet_state_.x, fleet_state_.y, fleet_state_.z); // Our position
+
+    // Calulate flyby offset using fleet normal
+    // Eigen::Vector3d flyby_offset(0.0, 0.0, -1.0*flyby_distance_);
+    // Eigen::Vector3d fleet_normal = rotateVector(flyby_offset, fleet_state_.phi, fleet_state_.theta, fleet_state_.psi);
+
+    // Eigen::Vector3d p_t(xt_.x + fleet_normal(0), xt_.y + fleet_normal(1), xt_.z + fleet_normal(2)); // target position (offset to create "flyby" effect)
+    Eigen::Vector3d p_t(xt_.x, xt_.y, xt_.z); // target position
+
+    // Calculate flyby offset using position vector
+    Eigen::Vector3d l = p_t - p_i; // actual line of sight vector
+    Eigen::Vector3d scoop_vector; // Holds the direction from which we want to try to "scoop up" the intruder;
+    // scoop_vector << 0.0, 0.0, -1.0; // Vertical
+
+    // scoop_vector << -1.0, 0, 0; // Unit vector South
+    // scoop_vector = rotateVector(scoop_vector, 0.0, -1.0*M_PI/6.0, atan2(p_t(1), p_t(2))); // 30 degree vector rotated in direction of target position vector
+
+    scoop_vector = p_t.normalized();
+    Eigen::Vector3d flyby_offset = scoop_vector*saturate(flyby_distance_ - l.norm(), flyby_distance_, -1.0*flyby_distance_);
+    l = l + flyby_offset;
+    // ROS_INFO("flyby_offset: x=%f, y=%f, z=%f", flyby_offset(0), flyby_offset(1), flyby_offset(2));
+    // ROS_INFO("intruder position: x=%f, y=%f, z=%f", xt_.x, xt_.y, xt_.z);
+    double L = l.norm();
+
+
+
+    // if(L <= pronav_range_) {
+    if(fleet_state_.z <= -1.0*takeoff_height_) { // Z is positive down, so above ground is negative
+
+      // Compute line of sight velocity vector
+      v_i << fleet_state_.xdot, fleet_state_.ydot, fleet_state_.zdot; // Our position
+      v_t << xt_.xdot, xt_.ydot, xt_.zdot; // target position
+
+      Eigen::Vector3d ldot = v_t - v_i; // line of sight velocity vector
+
+      // Compute target acceleration
+      Eigen::Vector3d a_t = (v_t - v_t_prev)/dt;
+
+      // Compute line of sight acceleration vector
+      Eigen::Vector3d lddot = a_t - a_i; // line of sight acceleration vector
+
+      //- ROS_INFO("vector ldot: x=%f, y=%f, z=%f", ldot(0), ldot(1), ldot(2));
+
+      double mu_v;
+      double mu_a;
+      double v_i_norm = v_i.norm();
+      double ldot_norm = ldot.norm();
+      double lddot_norm = lddot.norm();
+      if(v_i_norm == 0.0) { // Protect against divide by zero error
+        mu_v = ldot_norm / (0.00001);
+        mu_a = lddot_norm / (0.00001);
+      }
+      else {
+        mu_v = ldot_norm / v_i_norm;
+        mu_a = lddot_norm / v_i_norm;
+      }
+
+
+      double N_v = vel_control_constant_;
+      double N_a = accel_control_constant_;
+
+      Eigen::Vector3d omega_v = l.cross(ldot)/(L*L);
+      Eigen::Vector3d omega_a = l.cross(lddot)/(L*L);
+
+      // //- ROS_INFO("omega_v: x=%f, y=%f, z=%f", omega_v(0), omega_v(1), omega_v(2));
+      //- ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
+      Eigen::Vector3d vel_component = N_v*mu_v*omega_v.cross(v_i);
+      Eigen::Vector3d accel_component =  N_a*mu_a*omega_a.cross(v_i);
+
+
+      ROS_INFO("p_t: x=%f, y=%f, z=%f", p_t(0), p_t(1), p_t(2));
+      ROS_INFO("p_i: x=%f, y=%f, z=%f", p_i(0), p_i(1), p_i(2));
+      ROS_INFO("vector l: x=%f, y=%f, z=%f\n", l(0), l(1), l(2));
+
+      ROS_INFO("v_t: x=%f, y=%f, z=%f", v_t(0), v_t(1), v_t(2));
+      ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
+      ROS_INFO("vector ldot: x=%f, y=%f, z=%f\n", ldot(0), ldot(1), ldot(2));
+
+      ROS_INFO("a_t: x=%f, y=%f, z=%f", a_t(0), a_t(1), a_t(2));
+      ROS_INFO("a_i: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
+      ROS_INFO("vector lddot: x=%f, y=%f, z=%f\n", lddot(0), lddot(1), lddot(2));
+
+      ROS_INFO("a_i vel: x=%f, y=%f, z=%f", vel_component(0), vel_component(1), vel_component(2));
+      ROS_INFO("a_i accel: x=%f, y=%f, z=%f", accel_component(0), accel_component(1), accel_component(2));
+
+      a_i = vel_component + accel_component; // Interception Control acceleration
+
+      a_i(0) = saturate(a_i(0), max_.acceleration, -1.0*max_.acceleration);
+      a_i(1) = saturate(a_i(1), max_.acceleration, -1.0*max_.acceleration);
+      a_i(2) = saturate(a_i(2), max_.acceleration, -1.0*max_.acceleration);
+
+      fleet_state_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
+      fleet_state_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
+      fleet_state_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+
+      // //- ROS_INFO("Acceleration vector: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
+    }
+    else { // First "takeoff" to a specified height, before transferring to pronav control.
+      fleet_state_.xdot = 0;
+      fleet_state_.ydot = 0;
+      fleet_state_.zdot = saturate(-1.0*takeoff_velocity_, max_.velocity, -1.0*max_.velocity);
+    }
+
+
+
+    // fleet_state_.phidot += msg->axes[axes_.roll]*max_.phidot_rate;
+    // fleet_state_.thetadot += msg->axes[axes_.pitch]*max_.thetadot_rate;
+    // fleet_state_.psidot += msg->axes[axes_.yaw]*max_.psidot_rate;
+
+    fleet_state_.x += fleet_state_.xdot*dt;
+    fleet_state_.y += fleet_state_.ydot*dt;
+    fleet_state_.z += fleet_state_.zdot*dt;
+    // fleet_state_.phi += fleet_state_.phidot*dt;
+    // fleet_state_.theta += fleet_state_.thetadot*dt;
+    // fleet_state_.psi += fleet_state_.psidot*dt;
+
+    // Rotational control:
+    double d_rs = distance_start_rotation_;
+    double d_rf = distance_finish_rotation_;
+
+    //- ROS_INFO("v_t: x=%f, y=%f, z=%f", v_t(0), v_t(1), v_t(2));
+
+    // Compute normal vector desired for  the fleet plane
+    double normal_x = -1.0*v_t(0);
+    double normal_y = -1.0*v_t(1);
+    double normal_z = -1.0*v_t(2);
+
+    //- ROS_INFO("Normal vector: x=%f, y=%f, z=%f", normal_x, normal_y, normal_z);
+
+    // double normal_x = xt_.x;
+    // double normal_y = xt_.y;
+    // double normal_z = xt_.z;
+
+    // Calculate target angles
+    double phi_t = atan2(-1.0*normal_y, normal_z);
+
+    double theta_t = atan2(normal_x, normal_z);
+    // double psi_t = atan2(l(1),l(0)); // Calculate yaw with respect to line of sight vector
+    double psi_t = atan2(normal_y, normal_x); // Calculate yaw with respect to line of sight vector
+
+    // ROS_INFO("Target angles: roll=%f, pitch=%f, yaw=%f", phi_t, theta_t, psi_t);
+
+    double angle_gain = 0;
+    // Ramp the angle gain from 0 to 1 in desired distance interal
+    if(L <= d_rs && L >= d_rf) {
+      angle_gain = (d_rs - L)/(d_rs - d_rf);
+    }
+    else if(L < d_rf) {
+      angle_gain = 1.0; //We should be fully rotated by d_rf
+    }
+
+    // ROS_INFO("angle_gain: %f", angle_gain);
+    // fleet_state_.phi = phi_t*angle_gain;
+    fleet_state_.theta = theta_t*angle_gain;
+    double delta_psi = psi_t - fleet_state_.psi;
+    //- ROS_INFO("Delta_psi_target=%f", delta_psi);
+    double delta_psi_sat = saturate(delta_psi, max_.psi_rate, -1.0*max_.psi_rate);
+    //- ROS_INFO("Delta_psi_saturated=%f", delta_psi_sat);
+    fleet_state_.psi += delta_psi_sat; // Start tracking yaw from beginning
+
+    //- ROS_INFO("Current angles: roll=%f, pitch=%f, yaw=%f\n", fleet_state_.phi, fleet_state_.theta, fleet_state_.psi);
+
+
+    publishCommand();
+
+
+    /*
+    // Previous Controller Computations
+    // Figure out desired velocities (in inertial frame)
+    // By running the position controllers
+    double pndot_c = PID_x_.computePID(xt_.pn, xhat_.pn, dt);
+    double pedot_c = PID_y_.computePID(xt_.pe, xhat_.pe, dt);
+    double az_c = saturate(PID_z_.computePID(xt_.pd, xhat_.pd, dt), 1.0, -1.0);
+
+    // Rotate into body frame
+    /// TODO: Include pitch and roll in this mapping
+    double u_c = saturate(pndot_c*cos(xhat_.psi) + pedot_c*sin(xhat_.psi), max_.u, -1.0*max_.u);
+    double v_c = saturate(-pndot_c*sin(xhat_.psi) + pedot_c*cos(xhat_.psi), max_.v, -1.0*max_.v);
+
+//    double u_c = xt_.pn;
+//    double v_c = xt_.pe;
+
+    double ax_c = saturate(PID_u_.computePID(u_c, xhat_.u, dt), max_.roll, -max_.roll);
+    double ay_c = saturate(PID_v_.computePID(v_c, xhat_.v, dt), max_.pitch, -max_.pitch);
+
+    // Model inversion (m[ax;ay;az] = m[0;0;g] + R'[0;0;-T]
+    double total_acc_c = sqrt((1.0-az_c)*(1.0-az_c) + ax_c*ax_c + ay_c*ay_c); // (in g's)
+    double thrust = total_acc_c*thrust_eq_; // calculate the total thrust in normalized units
+    double phi_c = asin(ay_c / total_acc_c);
+    double theta_c = -1.0*asin(ax_c / total_acc_c);
+
+//    std::printf("z_c = %0.02f\t, z = %0.02f\t, az_c = %0.02f\t, total = %0.02f\t, thrust = %0.02f\n",
+//                xt_.pd, xhat_.pd, az_c, total_acc_c, thrust);
+//    std::printf("u_c: = %0.02f,\t u = %0.02f,\t out = %0.04f,\t theta_c = %0.04f, dt = %0.04f\n", u_c, xhat_.u, ax_c, theta_c, dt);
+
+    // For now, just command yaw to be in the direction of travel
+    double psi_c = atan2(xt_.pn - xhat_.pn, xt_.pe - xhat_.pe);
+    double r_c = saturate(PID_psi_.computePID(psi_c, xhat_.psi, dt), max_.yaw_rate, -max_.yaw_rate);
+
+    // Save message for publishing
+    // Be sure to add the feed-forward term for thrust
+    command_msg_.mode = fcu_common::ExtendedCommand::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
+    command_msg_.F = saturate(thrust, max_.throttle, 0.0);
+    command_msg_.x = phi_c;
+    command_msg_.y = theta_c;
+    command_msg_.z = r_c;
+    */
+  }
+
+}
+
 /**
  * Returns the predicted position of the target a given time away from the present
  * @param time - the time into the future we want to predict the target position
