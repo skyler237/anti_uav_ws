@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2017.2.1)  1 FEB 2017 15:49
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015/Debian) (preloaded format=pdflatex 2017.2.1)  1 FEB 2017 16:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -406,6 +406,27 @@ Underfull \hbox (badness 10000) in paragraph at lines 173--175
 
  []
 
+! Missing number, treated as zero.
+<to be read again> 
+                   \relax 
+l.179 \parindent \item
+                       [\textbf{Step 1:}] Text here
+A number should have been here; I inserted `0'.
+(If you can't figure out why I needed to see a number,
+look up `weird error' in the index to The TeXbook.)
+
+! Illegal unit of measure (pt inserted).
+<to be read again> 
+                   \relax 
+l.179 \parindent \item
+                       [\textbf{Step 1:}] Text here
+Dimensions can be in units of em, ex, in, pt, pc,
+cm, mm, dd, cc, nd, nc, bp, or sp; but yours is a new one!
+I'll assume that you meant to say pt, for printer's points.
+To recover gracefully from this error, it's best to
+delete the erroneous units; e.g., type `2' to delete
+two letters. (See Chapter 27 of The TeXbook.)
+
 No file ICUAS17_counter_UAS.bbl.
 
 ** Conference Paper **
@@ -422,14 +443,11 @@ Before submitting the final camera ready copy, remember to:
 
 LaTeX Warning: There were undefined references.
 
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
  ) 
 Here is how much of TeX's memory you used:
  3333 strings out of 493029
  47558 string characters out of 6136235
- 113231 words of memory out of 5000000
+ 114239 words of memory out of 5000000
  6800 multiletter control sequences out of 15000+600000
  44006 words of font info for 105 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -448,7 +466,7 @@ ve/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/f
 onts/type1/urw/times/utmbi8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw
 /times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.
 pfb>
-Output written on ICUAS17_counter_UAS.pdf (2 pages, 294254 bytes).
+Output written on ICUAS17_counter_UAS.pdf (2 pages, 294436 bytes).
 PDF statistics:
  122 PDF objects out of 1000 (max. 8388607)
  93 compressed objects within 1 object stream
