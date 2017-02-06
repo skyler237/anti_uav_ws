@@ -89,7 +89,7 @@
   <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py">
     <param name="namespace" value="$(arg intruding_uav_name)"/>
     <!-- Possible Types: file, random, straight -->
-    <param name="path_type" value="straight"/>
+    <param name="path_type" value="random"/>
     <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
   </node>
 

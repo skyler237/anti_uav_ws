@@ -136,8 +136,8 @@ void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
 
   if(is_flying_)
   {
-    computeControl();
-    publishCommand();
+    computeProNavControl();
+    // publishCommand();
   }
   else
   {
@@ -383,10 +383,11 @@ void InterceptController::computeProNavControl()
   prev_time_ = now;
 
   double flyby_distance_ = 10.0;
-  double takeoff_height_ = 5.0;
-  double takeoff_velocity_ = 5.0;
-  double vel_control_constant_ = 2.0;
+  double takeoff_height_ = 4.0;
+  double takeoff_velocity_ = 10.0;
+  double vel_control_constant_ = 10.0;
   double accel_control_constant_ = 1.0;
+  double pronav_range_ = 80.0;
 
 
   Eigen::Vector3d v_i;
@@ -406,12 +407,14 @@ void InterceptController::computeProNavControl()
 
   if(dt > 0.0)
   {
+    // Compute the average position/velocity of the individual multirotors
+    computeFleetState();
     // Compute line of sight position vector
-    Eigen::Vector3d p_i(fleet_state_.x, fleet_state_.y, fleet_state_.z); // Our position
+    Eigen::Vector3d p_i(fleet_goal_.x, fleet_goal_.y, fleet_goal_.z); // Our position
 
     // Calulate flyby offset using fleet normal
     // Eigen::Vector3d flyby_offset(0.0, 0.0, -1.0*flyby_distance_);
-    // Eigen::Vector3d fleet_normal = rotateVector(flyby_offset, fleet_state_.phi, fleet_state_.theta, fleet_state_.psi);
+    // Eigen::Vector3d fleet_normal = rotateVector(flyby_offset, fleet_goal_.phi, fleet_goal_.theta, fleet_goal_.psi);
 
     // Eigen::Vector3d p_t(xt_.x + fleet_normal(0), xt_.y + fleet_normal(1), xt_.z + fleet_normal(2)); // target position (offset to create "flyby" effect)
     Eigen::Vector3d p_t(xt_.x, xt_.y, xt_.z); // target position
@@ -434,10 +437,10 @@ void InterceptController::computeProNavControl()
 
 
     // if(L <= pronav_range_) {
-    if(fleet_state_.z <= -1.0*takeoff_height_) { // Z is positive down, so above ground is negative
+    if(fleet_goal_.z <= -1.0*takeoff_height_) { // Z is positive down, so above ground is negative
 
       // Compute line of sight velocity vector
-      v_i << fleet_state_.xdot, fleet_state_.ydot, fleet_state_.zdot; // Our position
+      v_i << fleet_goal_.xdot, fleet_goal_.ydot, fleet_goal_.zdot; // Our position
       v_t << xt_.xdot, xt_.ydot, xt_.zdot; // target position
 
       Eigen::Vector3d ldot = v_t - v_i; // line of sight velocity vector
@@ -472,8 +475,8 @@ void InterceptController::computeProNavControl()
       Eigen::Vector3d omega_v = l.cross(ldot)/(L*L);
       Eigen::Vector3d omega_a = l.cross(lddot)/(L*L);
 
-      // //- ROS_INFO("omega_v: x=%f, y=%f, z=%f", omega_v(0), omega_v(1), omega_v(2));
-      //- ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
+      ROS_INFO("omega_v: x=%f, y=%f, z=%f", omega_v(0), omega_v(1), omega_v(2));
+      // ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
       Eigen::Vector3d vel_component = N_v*mu_v*omega_v.cross(v_i);
       Eigen::Vector3d accel_component =  N_a*mu_a*omega_a.cross(v_i);
 
@@ -486,12 +489,12 @@ void InterceptController::computeProNavControl()
       ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
       ROS_INFO("vector ldot: x=%f, y=%f, z=%f\n", ldot(0), ldot(1), ldot(2));
 
-      ROS_INFO("a_t: x=%f, y=%f, z=%f", a_t(0), a_t(1), a_t(2));
-      ROS_INFO("a_i: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
-      ROS_INFO("vector lddot: x=%f, y=%f, z=%f\n", lddot(0), lddot(1), lddot(2));
+      // ROS_INFO("a_t: x=%f, y=%f, z=%f", a_t(0), a_t(1), a_t(2));
+      // ROS_INFO("a_i: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
+      // ROS_INFO("vector lddot: x=%f, y=%f, z=%f\n", lddot(0), lddot(1), lddot(2));
 
       ROS_INFO("a_i vel: x=%f, y=%f, z=%f", vel_component(0), vel_component(1), vel_component(2));
-      ROS_INFO("a_i accel: x=%f, y=%f, z=%f", accel_component(0), accel_component(1), accel_component(2));
+      // ROS_INFO("a_i accel: x=%f, y=%f, z=%f", accel_component(0), accel_component(1), accel_component(2));
 
       // a_i = vel_component + accel_component; // Interception Control acceleration
       a_i = vel_component;
@@ -500,12 +503,14 @@ void InterceptController::computeProNavControl()
       a_i(1) = saturate(a_i(1), max_.acceleration, -1.0*max_.acceleration);
       a_i(2) = saturate(a_i(2), max_.acceleration, -1.0*max_.acceleration);
 
-      // fleet_state_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
-      // fleet_state_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
-      // fleet_state_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
-      fleet_goal_.xdot = saturate(fleet_state_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
-      fleet_goal_.ydot = saturate(fleet_state_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
-      fleet_goal_.zdot = saturate(fleet_state_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+      // fleet_goal_.xdot = saturate(fleet_goal_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
+      // fleet_goal_.ydot = saturate(fleet_goal_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
+      // fleet_goal_.zdot = saturate(fleet_goal_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.xdot = saturate(fleet_goal_.xdot + a_i(0), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.ydot = saturate(fleet_goal_.ydot + a_i(1), max_.velocity, -1.0*max_.velocity);
+      fleet_goal_.zdot = saturate(fleet_goal_.zdot + a_i(2), max_.velocity, -1.0*max_.velocity);
+
+
 
       // //- ROS_INFO("Acceleration vector: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
     }
@@ -513,20 +518,21 @@ void InterceptController::computeProNavControl()
       fleet_goal_.xdot = 0;
       fleet_goal_.ydot = 0;
       fleet_goal_.zdot = saturate(-1.0*takeoff_velocity_, max_.velocity, -1.0*max_.velocity);
+
+      // fleet_goal_.x = p_t(0);
+      // fleet_goal_.y = p_t(1);
+      // fleet_goal_.z = p_t(2);
     }
 
 
+    fleet_goal_.x = fleet_goal_.x + fleet_goal_.xdot*dt;
+    fleet_goal_.y = fleet_goal_.y + fleet_goal_.ydot*dt;
+    fleet_goal_.z = fleet_goal_.z + fleet_goal_.zdot*dt;
 
-    // fleet_state_.phidot += msg->axes[axes_.roll]*max_.phidot_rate;
-    // fleet_state_.thetadot += msg->axes[axes_.pitch]*max_.thetadot_rate;
-    // fleet_state_.psidot += msg->axes[axes_.yaw]*max_.psidot_rate;
 
-    fleet_goal_.x += fleet_goal_.xdot*dt;
-    fleet_goal_.y += fleet_goal_.ydot*dt;
-    fleet_goal_.z += fleet_goal_.zdot*dt;
-    // fleet_state_.phi += fleet_state_.phidot*dt;
-    // fleet_state_.theta += fleet_state_.thetadot*dt;
-    // fleet_state_.psi += fleet_state_.psidot*dt;
+    // fleet_goal_.phi += fleet_goal_.phidot*dt;
+    // fleet_goal_.theta += fleet_goal_.thetadot*dt;
+    // fleet_goal_.psi += fleet_goal_.psidot*dt;
 
     // Rotational control:
     double d_rs = distance_start_rotation_;
@@ -534,21 +540,15 @@ void InterceptController::computeProNavControl()
 
     //- ROS_INFO("v_t: x=%f, y=%f, z=%f", v_t(0), v_t(1), v_t(2));
 
-    // Compute normal vector desired for  the fleet plane
-    double normal_x = -1.0*v_t(0);
-    double normal_y = -1.0*v_t(1);
-    double normal_z = -1.0*v_t(2);
 
-    //- ROS_INFO("Normal vector: x=%f, y=%f, z=%f", normal_x, normal_y, normal_z);
-
-    // double normal_x = xt_.x;
-    // double normal_y = xt_.y;
-    // double normal_z = xt_.z;
+    double normal_x = xt_.x;
+    double normal_y = xt_.y;
+    double normal_z = xt_.z;
 
     // Calculate target angles
     double phi_t = atan2(-1.0*normal_y, normal_z);
 
-    double theta_t = atan2(normal_x, normal_z);
+    double theta_t = atan2(normal_x, -1.0*normal_z);
     // double psi_t = atan2(l(1),l(0)); // Calculate yaw with respect to line of sight vector
     double psi_t = atan2(normal_y, normal_x); // Calculate yaw with respect to line of sight vector
 
@@ -564,15 +564,15 @@ void InterceptController::computeProNavControl()
     }
 
     // ROS_INFO("angle_gain: %f", angle_gain);
-    // fleet_state_.phi = phi_t*angle_gain;
-    fleet_state_.theta = theta_t*angle_gain;
-    double delta_psi = psi_t - fleet_state_.psi;
+    // fleet_goal_.phi = phi_t*angle_gain;
+    fleet_goal_.theta = theta_t*angle_gain;
+    double delta_psi = psi_t - fleet_goal_.psi;
     //- ROS_INFO("Delta_psi_target=%f", delta_psi);
     double delta_psi_sat = saturate(delta_psi, max_.psi_rate, -1.0*max_.psi_rate);
     //- ROS_INFO("Delta_psi_saturated=%f", delta_psi_sat);
-    fleet_state_.psi += delta_psi_sat; // Start tracking yaw from beginning
+    fleet_goal_.psi += delta_psi_sat; // Start tracking yaw from beginning
 
-    //- ROS_INFO("Current angles: roll=%f, pitch=%f, yaw=%f\n", fleet_state_.phi, fleet_state_.theta, fleet_state_.psi);
+    //- ROS_INFO("Current angles: roll=%f, pitch=%f, yaw=%f\n", fleet_goal_.phi, fleet_goal_.theta, fleet_goal_.psi);
 
 
     publishCommand();

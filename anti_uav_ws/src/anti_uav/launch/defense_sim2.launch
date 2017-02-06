@@ -7,8 +7,8 @@
   <arg name="net_size" default="6.0"/>
   <arg name="net_size_half" default="3.0"/>
 
-  <arg name="world_file" default="fast_basic.world"/>
-  <!-- <arg name="world_file" default="basic.world"/> -->
+  <!-- <arg name="world_file" default="fast_basic.world"/> -->
+  <arg name="world_file" default="basic.world"/>
 
   <arg name="fleet_x_P" value="3.0"/>
   <arg name="fleet_x_I" value="0.06"/>
@@ -181,7 +181,7 @@
   <!-- Waypoint Manager -->
   <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py" output="screen">
     <param name="namespace" value="$(arg intruding_uav_name)"/>
-    <param name="path_type" value="random"/>
+    <param name="path_type" value="straight"/>
     <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
   </node>
 
@@ -190,8 +190,8 @@
     <param name="max_velocity" value="10.0"/>
     <param name="max_acceleration" value="4.0"/>
     <param name="max_yaw_rate" value="0.00"/>
-    <param name="distance_start_rotation" value="40"/>
-    <param name="distance_finish_rotation" value="10"/>
+    <param name="distance_start_rotation" value="50"/>
+    <param name="distance_finish_rotation" value="15"/>
     <param name="fleet_square_width" value="$(arg net_size)"/>
 
     <!-- TESTING!!!! -->
