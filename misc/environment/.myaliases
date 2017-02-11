@@ -1,0 +1,11 @@
+alias s="sublime"
+alias a="atom"
+alias srcbash="source ~/.bashrc"
+alias bashrc="sublime ~/.bashrc"
+alias aliases="sublime ~/.myaliases"
+alias rosrc="sublime ~/.rosrc"
+alias rosalias="sublime ~/.rosalias"
+alias matlab="matlab -softwareopengl &"
+alias autoTest="~/counter_uas/scripts/autoTest"
+alias autotest_results="cd ~/counter_uas/scripts/matlab/skyler/recent_tests/analysis/autotest"
+

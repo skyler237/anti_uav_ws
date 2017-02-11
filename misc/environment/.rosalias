@@ -1,0 +1,18 @@
+alias fixCMake="rm CMakeLists.txt && cp /opt/ros/kinetic/share/catkin/cmake/toplevel.cmake CMakeLists.txt"
+alias is_flying="rostopic pub /is_flying std_msgs/Bool \"data: true\" "
+alias killgz="kill $(pgrep gz*) && kill $(pgrep gz*)"
+alias unpause_sim="rosservice call gazebo/unpause_physics"
+alias pause_sim="rosservice call gazebo/pause_physics"
+
+fixBag() { 
+	rosbag reindex $1
+	rosbag fix $1 $2
+	rm *.orig.*
+	rm $1
+}
+
+alias fixAllBags="~/counter_uas/scripts/fixAllBags"
+rmtest() {
+	rm auto_test$1.bag
+	rm results$1.bag
+}
