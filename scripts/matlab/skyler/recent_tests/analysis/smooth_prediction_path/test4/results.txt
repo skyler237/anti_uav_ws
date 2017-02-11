@@ -103,3 +103,25 @@ intercept_radius: 83.1284926643
 intercept_time: 14.9
 ---
 
+Results for simulation #535
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 960000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 81.3905020386
+  y: -2.59200573464
+  z: -12.7721320868
+intercept_point: 
+  x: 1.46039433837
+  y: 2.13525331189
+  z: 0.0
+intercept_radius: 82.4272993241
+intercept_time: 14.96
+---
+
+Results for simulation #536

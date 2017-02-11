@@ -25,7 +25,7 @@ class WaypointManager():
 
         # parameters specific to intruding uav
         self.ring_distance = rospy.get_param('~ring_distance', 20)
-        self.number_of_rings = rospy.get_param('~number_of_rings', 6)
+        self.number_of_rings = rospy.get_param('~number_of_rings', 5)
         self.delta_theta_range = rospy.get_param('~delta_theta_range', math.pi / 6)
 
         initial_position = Vector3()
@@ -35,7 +35,7 @@ class WaypointManager():
         self.initial_position = rospy.get_param('~initial_position', initial_position)
 
         reset_position = Vector3()
-        reset_position.x = 130
+        reset_position.x = 110
         reset_position.y = 0
         reset_position.z = -35 # Note: this is a positive number representing magnitude of height, but in the NED coordinate system, up is negative
         self.reset_position = rospy.get_param('~reset_position', reset_position)
@@ -149,7 +149,7 @@ class WaypointManager():
         reset_position = np.array([self.reset_position.x,
                                      self.reset_position.y,
                                      self.reset_position.z])
-                                     
+
         reset_pos_error = np.linalg.norm(current_position - reset_position)
 
         # Get error between waypoint and current state

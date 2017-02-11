@@ -2,12 +2,18 @@
 #include <stdio.h>
 
 typedef Eigen::Matrix<double, 3, 4> Matrix3x4d;
+typedef Eigen::Matrix<double, 3, 3> Matrix3x3d;
 static double avg_intruder_x_vel;
 static double avg_intruder_y_vel;
 static double avg_intruder_z_vel;
 bool first_vel_measurement = true;
 static Eigen::Vector3d  intruder_accel(0.0, 0.0, 0.0);
 static double deriv_gain = 0.05;
+
+double flyby_distance_;
+double takeoff_height_;
+double takeoff_velocity_;
+double vel_control_constant_;
 
 // Used for debug messages
 #define TARGET_CALLBACK 1
@@ -39,6 +45,11 @@ InterceptController::InterceptController() :
   distance_start_rotation_ = nh_private_.param<double>("distance_start_rotation", 30.0); // [m]
   distance_finish_rotation_ = nh_private_.param<double>("distance_finish_rotation", 10.0); // [m]
   deriv_gain = nh_private_.param<double>("deriv_gain", 0.05);
+
+  flyby_distance_ = nh_private_.param<double>("flyby_distance", 10.0);
+  takeoff_height_ = nh_private_.param<double>("takeoff_height",  4.0);
+  takeoff_velocity_ = nh_private_.param<double>("takeoff_velocity", 10.0);
+  vel_control_constant_ = nh_private_.param<double>("vel_control_constant", 3.0);
 
   // Maximum values
   max_.velocity = nh_private_.param<double>("max_velocity", 15.0);
@@ -91,6 +102,17 @@ void InterceptController::isFlyingCallback(const std_msgs::BoolConstPtr &msg)
 // May also attempt to predict the position of the intruder
 void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
 {
+  // Convert Quaternion to RPY
+  tf::Quaternion tf_quat;
+  tf::quaternionMsgToTF(msg->pose.pose.orientation, tf_quat);
+  tf::Matrix3x3(tf_quat).getRPY(xt_.phi, xt_.theta, xt_.psi);
+  xt_.theta = xt_.theta;
+  xt_.psi = xt_.psi;
+
+  xt_.phidot = msg->twist.twist.angular.x;
+  xt_.thetadot = msg->twist.twist.angular.x;
+  xt_.psidot = msg->twist.twist.angular.x;
+
   xt_.x = msg->pose.pose.position.x;
   xt_.y = msg->pose.pose.position.y;
   xt_.z = msg->pose.pose.position.z;
@@ -98,9 +120,12 @@ void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
   Eigen::Vector3d distance(xt_.x - fleet_state_.x, xt_.y - fleet_state_.y, xt_.z - fleet_state_.z);
   if(debug_print & TARGET_CALLBACK) ROS_INFO("Distance=%f", distance.norm());
 
-  xt_.xdot = msg->twist.twist.linear.x;
-  xt_.ydot = msg->twist.twist.linear.y;
-  xt_.zdot = msg->twist.twist.linear.z;
+  Vector3d body_vel(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z);
+  Vector3d inertial_vel = rotateBodyToInertial(body_vel, xt_.phi, xt_.theta, xt_.psi);
+
+  xt_.xdot = inertial_vel(0);
+  xt_.ydot = inertial_vel(1);
+  xt_.zdot = inertial_vel(2);
 
   // Initialize rolling average
   if(first_vel_measurement) {
@@ -123,20 +148,12 @@ void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
     ROS_INFO("Target: Avg'd Velocity: x=%f, y=%f, z=%f", avg_intruder_x_vel, avg_intruder_y_vel, avg_intruder_z_vel);
   }
 
-  // Convert Quaternion to RPY
-  tf::Quaternion tf_quat;
-  tf::quaternionMsgToTF(msg->pose.pose.orientation, tf_quat);
-  tf::Matrix3x3(tf_quat).getRPY(xt_.phi, xt_.theta, xt_.psi);
-  xt_.theta = xt_.theta;
-  xt_.psi = xt_.psi;
 
-  xt_.phidot = msg->twist.twist.angular.x;
-  xt_.thetadot = msg->twist.twist.angular.x;
-  xt_.psidot = msg->twist.twist.angular.x;
 
   if(is_flying_)
   {
-    computeProNavControl();
+    // computeProNavControl();
+    computeControl();
     // publishCommand();
   }
   else
@@ -219,8 +236,6 @@ void InterceptController::computeControl()
     static Eigen::Vector3d target_d1(0.0,0.0,0.0); // for calculating acceleration
     Eigen::Vector3d target_pos(xt_.x, xt_.y, xt_.z);
 
-
-
     if(dt > 0.0)
     {
       // Compute the average position/velocity of the individual multirotors
@@ -245,13 +260,13 @@ void InterceptController::computeControl()
       target_d1 = target_pos;
       if(debug_print & COMPUTE_CONTROL) ROS_INFO("Intruder accel: x=%f, y=%f, z=%f", intruder_accel(0), intruder_accel(1), intruder_accel(2));
 
-      // // Predict the target position
-      // Eigen::Vector3d target_predicted = targetPredict(computeInterceptTime());
-      // // Plan a path_ to the predicted position
-      // Path_t path_ = planPath(z, target_predicted, target_pos);
+      // Predict the target position
+      Eigen::Vector3d target_predicted = targetPredict(computeInterceptTime());
+      // Plan a path_ to the predicted position
+      path_ = planPath(z, target_predicted, target_pos);
 
-      // Plan a path_ using the target's actual position
-      path_ = planPath(z, target_pos, target_pos); // Using target position vector as intercept vector.
+      // // Plan a path_ using the target's actual position
+      // path_ = planPath(z, target_pos, target_pos); // Using target position vector as intercept vector.
 
       // Debugging print waypoints loop
       if(debug_print & COMPUTE_CONTROL) {
@@ -382,10 +397,7 @@ void InterceptController::computeProNavControl()
   double dt = now - prev_time_;
   prev_time_ = now;
 
-  double flyby_distance_ = 10.0;
-  double takeoff_height_ = 4.0;
-  double takeoff_velocity_ = 10.0;
-  double vel_control_constant_ = 10.0;
+
   double accel_control_constant_ = 1.0;
   double pronav_range_ = 80.0;
 
@@ -475,25 +487,25 @@ void InterceptController::computeProNavControl()
       Eigen::Vector3d omega_v = l.cross(ldot)/(L*L);
       Eigen::Vector3d omega_a = l.cross(lddot)/(L*L);
 
-      ROS_INFO("omega_v: x=%f, y=%f, z=%f", omega_v(0), omega_v(1), omega_v(2));
+      // ROS_INFO("omega_v: x=%f, y=%f, z=%f", omega_v(0), omega_v(1), omega_v(2));
       // ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
       Eigen::Vector3d vel_component = N_v*mu_v*omega_v.cross(v_i);
       Eigen::Vector3d accel_component =  N_a*mu_a*omega_a.cross(v_i);
 
 
-      ROS_INFO("p_t: x=%f, y=%f, z=%f", p_t(0), p_t(1), p_t(2));
-      ROS_INFO("p_i: x=%f, y=%f, z=%f", p_i(0), p_i(1), p_i(2));
-      ROS_INFO("vector l: x=%f, y=%f, z=%f\n", l(0), l(1), l(2));
-
-      ROS_INFO("v_t: x=%f, y=%f, z=%f", v_t(0), v_t(1), v_t(2));
-      ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
-      ROS_INFO("vector ldot: x=%f, y=%f, z=%f\n", ldot(0), ldot(1), ldot(2));
+      // ROS_INFO("p_t: x=%f, y=%f, z=%f", p_t(0), p_t(1), p_t(2));
+      // ROS_INFO("p_i: x=%f, y=%f, z=%f", p_i(0), p_i(1), p_i(2));
+      // ROS_INFO("vector l: x=%f, y=%f, z=%f\n", l(0), l(1), l(2));
+      //
+      // ROS_INFO("v_t: x=%f, y=%f, z=%f", v_t(0), v_t(1), v_t(2));
+      // ROS_INFO("v_i: x=%f, y=%f, z=%f", v_i(0), v_i(1), v_i(2));
+      // ROS_INFO("vector ldot: x=%f, y=%f, z=%f\n", ldot(0), ldot(1), ldot(2));
 
       // ROS_INFO("a_t: x=%f, y=%f, z=%f", a_t(0), a_t(1), a_t(2));
       // ROS_INFO("a_i: x=%f, y=%f, z=%f", a_i(0), a_i(1), a_i(2));
       // ROS_INFO("vector lddot: x=%f, y=%f, z=%f\n", lddot(0), lddot(1), lddot(2));
 
-      ROS_INFO("a_i vel: x=%f, y=%f, z=%f", vel_component(0), vel_component(1), vel_component(2));
+      // ROS_INFO("a_i vel: x=%f, y=%f, z=%f", vel_component(0), vel_component(1), vel_component(2));
       // ROS_INFO("a_i accel: x=%f, y=%f, z=%f", accel_component(0), accel_component(1), accel_component(2));
 
       // a_i = vel_component + accel_component; // Interception Control acceleration
@@ -595,22 +607,24 @@ Eigen::Vector3d InterceptController::targetPredict(double time) {
     ROS_INFO("Time = %f", time);
     ROS_INFO("Target position: x=%f, y=%f, z=%f", prediction(0), prediction(1), prediction(2));
   }
-  Eigen::Vector3d acceleration(intruder_accel(0), intruder_accel(1), intruder_accel(2));
+  // Eigen::Vector3d acceleration(intruder_accel(0), intruder_accel(1), intruder_accel(2));
 
 
-  // Eigen::Vector3d velocity(xt_.xdot, xt_.ydot, xt_.zdot);
-  Eigen::Vector3d velocity(avg_intruder_x_vel, avg_intruder_y_vel, avg_intruder_z_vel);
+  Eigen::Vector3d velocity(xt_.xdot, xt_.ydot, xt_.zdot);
+  // Eigen::Vector3d velocity(avg_intruder_x_vel, avg_intruder_y_vel, avg_intruder_z_vel);
   if(debug_print & TARGET_PREDICT) {
     ROS_INFO("Actual Velocity: x=%f, y=%f, z=%f", xt_.xdot, xt_.ydot, xt_.zdot);
     ROS_INFO("Avg'd Velocity: x=%f, y=%f, z=%f", velocity(0), velocity(1), velocity(2));
   }
-  Eigen::Vector3d vel_with_accel = velocity + time*acceleration;
-  if(debug_print & TARGET_PREDICT) ROS_INFO("Velocity with accel: x=%f, y=%f, z=%f", vel_with_accel(0), vel_with_accel(1), vel_with_accel(2));
+  // Eigen::Vector3d vel_with_accel = velocity + time*acceleration;
+  // if(debug_print & TARGET_PREDICT) ROS_INFO("Velocity with accel: x=%f, y=%f, z=%f", vel_with_accel(0), vel_with_accel(1), vel_with_accel(2));
   // velocity = saturate_vector(vel_with_accel, max_.velocity, -1.0*max_.velocity);
   velocity = saturate_vector(velocity, max_.velocity, -1.0*max_.velocity);
   prediction += time*velocity;
-  // We don't care if the intruder is past the "protection radius"
-  prediction = saturate_vector(prediction, protection_radius_, 0.0);
+
+  // // We don't care if the intruder is past the "protection radius"
+  // prediction = saturate_vector(prediction, protection_radius_, 0.0);
+
   // We don't want to predict the intruder to be below a certain level (about half the net width)
   prediction(2) = saturate(prediction(2), -0.6*fleet_square_width_, -1.0*protection_radius_);
 
@@ -834,13 +848,13 @@ Path_t InterceptController::planPath(Eigen::Vector3d fleet_pos, Eigen::Vector3d 
   // path = getSimpleWaypointPath(fleet_pos, target_pos, v_final);
 
   // // ============= Smoothed trajectory implementation ========================
-  // path = getSmoothedWaypointPath(fleet_pos, target_pos, v_final);
+  path = getSmoothedWaypointPath(fleet_pos, target_pos, v_final);
 
   // // ============= Protection Radius Defense implementation ========================
   // path = getProtectionRadiusWaypointPath(fleet_pos, target_pos, v_final);
 
   // ============= Adaptive Protection Radius Defense implementation ========================
-  path = getAdaptiveProtectionRadiusWaypointPath(fleet_pos, target_pos);
+  // path = getAdaptiveProtectionRadiusWaypointPath(fleet_pos, target_pos);
 
   return path;
 }
@@ -850,6 +864,7 @@ Path_t InterceptController::planPath(Eigen::Vector3d fleet_pos, Eigen::Vector3d 
  * @return - the optimal intercept time
  */
  // TODO: should I use the actual current velocity, or some precomputed constant value?
+ #define MAX_PREDICTION_TIME 10.0
 double InterceptController::computeInterceptTime() {
   double v = max_.velocity;
   double t1 = 0.0;
@@ -861,14 +876,14 @@ double InterceptController::computeInterceptTime() {
   double time_step = 10.0;
   while (time_delta(v, t2, z, v_intercept) <= 0.0)  {
     t2 += time_step;
-    if(t2 > protection_radius_/v) {
-      ROS_INFO("Breaking out of loop");
-      // We are probably in an infinite loop -- this means the target is "running away"
-      // For now, just return the time it takes to get to the current position of the target
-      Eigen::Vector3d target_pos(xt_.x, xt_.y, xt_.z);
-      Path_t current_path = planPath(z, target_pos, v_intercept);
-      return pathLength(&current_path)/v;
-    }
+    // if(t2 > protection_radius_/v) {
+    //   ROS_INFO("Breaking out of loop");
+    //   // We are probably in an infinite loop -- this means the target is "running away"
+    //   // For now, just return the time it takes to get to the current position of the target
+    //   Eigen::Vector3d target_pos(xt_.x, xt_.y, xt_.z);
+    //   Path_t current_path = planPath(z, target_pos, v_intercept);
+    //   return saturate(pathLength(&current_path)/v, MAX_PREDICTION_TIME, 0.0); // Limit the max prediction time
+    // }
   }
 
   // Perform bisection search
@@ -888,7 +903,7 @@ double InterceptController::computeInterceptTime() {
   }
 
   // return optimal value
-  return (t1 + t2)/2.0;
+  return saturate((t1 + t2)/2.0, MAX_PREDICTION_TIME, 0.0);
 }
 
 double InterceptController::time_delta(double v, double T, Eigen::Vector3d z, Eigen::Vector3d v_intercept) {
@@ -1017,6 +1032,26 @@ Vector3d InterceptController::tustinDerivativeVector(Vector3d xdot, Vector3d x, 
   derivative(1) = tustinDerivative(xdot(1), x(1), x_prev(1), dt, tau);
   derivative(2) = tustinDerivative(xdot(2), x(2), x_prev(2), dt, tau);
   return derivative;
+}
+
+Vector3d InterceptController::rotateBodyToInertial(Vector3d body_vec, double phi, double theta, double psi) {
+  Vector3d inertial_vec;
+
+  double cp = cos(phi);
+  double sp = sin(phi);
+  double ct = cos(theta);
+  double st = sin(theta);
+  double cs = cos(psi);
+  double ss = sin(psi);
+
+  Matrix3x3d R;
+  R <<  ct*cs, sp*st*cs - cp*ss, cp*st*cs + sp*ss,
+        ct*ss, sp*st*ss + cp*cs, cp*st*ss - sp*cs,
+        -st,          sp*ct,            cp*ct;
+
+  inertial_vec = R*body_vec;
+
+  return inertial_vec;
 }
 
 

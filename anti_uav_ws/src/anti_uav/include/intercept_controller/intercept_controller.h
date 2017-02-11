@@ -195,6 +195,7 @@ private:
   double min(double x, double y);
   double tustinDerivative(double xdot, double x, double x_prev, double dt, double tau);
   Vector3d tustinDerivativeVector(Vector3d xdot, Vector3d x, Vector3d x_prev, double dt, double tau);
+  Vector3d rotateBodyToInertial(Vector3d body_vec, double phi, double theta, double psi);
 };
 }
 

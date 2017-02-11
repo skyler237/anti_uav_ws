@@ -206,7 +206,7 @@
      COMPUTE_FLEET_STATE 8
      TARGET_PREDICT 16
      ADAPTIVE RADIUS 32-->
-    <param name="debug_print" value="8"/>
+    <param name="debug_print" value="18"/>
 
     <!--
      DIRECT 0

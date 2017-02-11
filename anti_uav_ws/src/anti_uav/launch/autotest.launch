@@ -89,7 +89,7 @@
   <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py">
     <param name="namespace" value="$(arg intruding_uav_name)"/>
     <!-- Possible Types: file, random, straight -->
-    <param name="path_type" value="random"/>
+    <param name="path_type" value="straight"/>
     <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
   </node>
 
@@ -101,6 +101,10 @@
     <param name="distance_start_rotation" value="40"/>
     <param name="distance_finish_rotation" value="10"/>
     <param name="fleet_square_width" value="$(arg net_size)"/>
+    <param name="flyby_distance" value="10"/>
+    <param name="takeoff_height" value="$(arg net_size)"/>
+    <param name="takeoff_velocity" value="10"/>
+    <param name="vel_control_constant" value="3.0"/>
 
     <!-- TESTING!!!! -->
     <param name="position_error" value="15.0"/>
