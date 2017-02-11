@@ -1,6 +1,8 @@
 path(path,'skyler')
 %bagfile = 'skyler/recent_tests/adaptive_plot_radius/net_margin_third_not_moving_test.bag';
-bagfile = 'skyler/recent_tests/analysis/autotest/test16/auto_test2593.bag';
+% bagfile = 'skyler/recent_tests/analysis/autotest/test16/auto_test2593.bag';
+% bagfile = 'skyler/recent_tests/analysis/pronav/test4/auto_test876.bag';
+bagfile = 'skyler/recent_tests/analysis/smooth_prediction_path/test4/auto_test123.bag';
 % bagfile = 'skyler/recent_tests/analysis/PIDtesting/auto_test28.bag';
 data = processAllTopics(bagfile);
 
@@ -13,16 +15,16 @@ if(time ~= 0)
     disp(int_point)
     disp('time')
     disp(time)
-    start_sim_time = time - 0.2;
-    stop_sim_time = time + 0.2;
+    start_sim_time = time - 0.1;
+    stop_sim_time = time + 0.05;
 else
     start_sim_time = 36;
     stop_sim_time = 48.5;
 end
 
 
-% start_sim_time = 0.0;
-% stop_sim_time = 100.5;
+start_sim_time = 10.0;
+stop_sim_time = 13.3;
 
 plot_intruder       = 1;
 plot_uav_goal       = 0;
@@ -30,7 +32,7 @@ plot_uav_actual     = 1;
 plot_fleet_pose     = 0;
 plot_waypoint_path  = 0;
 plot_path_trajectory= 0;
-plot_trajectory_endpoints = 0;
+plot_trajectory_endpoints = 1;
 plot_uav_xyz        = 0;
 plot_intruder_xyz   = 0;
 plot_intruder_dots  = 1;

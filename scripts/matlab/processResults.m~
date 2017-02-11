@@ -2,8 +2,7 @@ path(path,'skyler')
 clear all
 
 % test_path = 'skyler/recent_tests/analysis/autotest/test17/';
-% test_path = 'skyler/recent_tests/analysis/pronav/test8/';
-test_path = 'skyler/recent_tests/analysis/smooth_prediction_path/test4/';
+test_path = 'skyler/recent_tests/analysis/pronav/test7/';
 
 results_file = strcat(test_path,'results.csv');
 old_results = [];
@@ -35,12 +34,8 @@ for k=1:N
    test_number = str2double(strings(2));
    
    % Check if the bag has been processed before
-   if(isempty(old_results))
-      old_test_index = [];
-   else
-      old_test_index = find(old_results(1,:) == test_number, 1);
-   end  
-
+   old_test_index = find(old_results(1,:) == test_number, 1);
+%    old_test_index = [];
    if(~isempty(old_test_index))
        isSuccess = old_results(2, old_test_index);
        int_point = old_results(3:5, old_test_index);
@@ -98,23 +93,16 @@ results = sortrows(results')';
 %     find([old_results(1,:), zeros(1, size(results,2) - size(old_results,2))] ~= results(1,:), 1):size(results,2));
        
 new_results = [];
-if(~isempty(old_results))
-    for i=1:size(results,2)
-        if(isempty(find(old_results(1,:) == results(1,i),1)))
-            new_results = [new_results, results(:,i)];
-        end
-    end
-else
-    new_results = results;
+for i=1:size(results,2)
+    if(
 end
-
 
 
 format compact
 % Check if there are any new results
 if(size(new_results,2) ~= 0)
-    [T, outliers, success_outliers, failed_inliers, ...                
-        possible_failed_mistakes, possible_success_mistakes] = evalc('findOutliers(new_results);');
+    [outliers, success_outliers, failed_inliers, ...                
+        possible_failed_mistakes, possible_success_mistakes] = findOutliers(new_results);
 %         possible_failed_mistakes, possible_success_mistakes] = findOutliers(results);
     
     
@@ -146,12 +134,9 @@ if(size(new_results,2) ~= 0)
     end
 end       
     
-results = sortrows(results')';
-findOutliers(results);
 
+results = sortrows(results')';
 results_file = strcat(test_path,'results.csv');
 csvwrite(results_file,results)
-
-loadResults(results_file);
 
 
