@@ -1,5 +1,12 @@
 <launch>
 
+  <!--
+  ADAPTIVE_RADIUS_STRATEGY 1
+  PRONAV_STRATEGY 2
+  PREDICTIVE_WAYPOINTS_STRATEGY 3 -->
+  <arg name="intercept_strategy" default="1"/>
+  <arg name="path_type" default="straight"/>
+
 
   <arg name="fleet_name" default="fleet"/>
   <arg name="intruding_uav_name" default="intruder"/>
@@ -21,6 +28,9 @@
   <arg name="fleet_z_P" value="1.0"/>
   <arg name="fleet_z_I" value="0.05"/>
   <arg name="fleet_z_D" value="1.0"/>
+
+
+
 
   <!-- Start Simulator -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -89,7 +99,7 @@
   <node name="waypoint_manager" pkg="ros_copter" type="waypoint_manager.py">
     <param name="namespace" value="$(arg intruding_uav_name)"/>
     <!-- Possible Types: file, random, straight -->
-    <param name="path_type" value="straight"/>
+    <param name="path_type" value="$(arg path_type)"/>
     <param name="waypoint_filename" value="/home/skyler/waypoints.csv"/>
   </node>
 
@@ -124,6 +134,12 @@
      DIRECT 0
      WAYPOINT 1-->
     <param name="path_type" value="1"/>
+
+    <!--
+    ADAPTIVE_RADIUS_STRATEGY 1
+    PRONAV_STRATEGY 2
+    PREDICTIVE_WAYPOINTS_STRATEGY 3 -->
+    <param name="intercept_strategy" value="$(arg intercept_strategy)"/>
 
     <!-- Protection radius also acts as max radius -->
     <param name="protection_radius" value="60"/>

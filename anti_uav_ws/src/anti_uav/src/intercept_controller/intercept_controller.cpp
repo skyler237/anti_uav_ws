@@ -28,6 +28,11 @@ static int debug_print = TARGET_CALLBACK;
 #define WAYPOINT 1
 static int path_type = DIRECT;
 
+#define ADAPTIVE_RADIUS_STRATEGY 1
+#define PRONAV_STRATEGY 2
+#define PREDICTIVE_WAYPOINTS_STRATEGY 3
+static int intercept_strategy = ADAPTIVE_RADIUS_STRATEGY;
+
 
 namespace intercept_controller
 {
@@ -39,6 +44,8 @@ InterceptController::InterceptController() :
   // retrieve params
   thrust_eq_= nh_private_.param<double>("equilibrium_thrust", 0.34);
   is_flying_ = false;
+
+  intercept_strategy = nh_private_.param<int>("intercept_strategy", ADAPTIVE_RADIUS_STRATEGY);
 
   // System parameters
   fleet_square_width_ = nh_private_.param<double>("fleet_square_width", 4.0); // [m]
@@ -152,8 +159,12 @@ void InterceptController::targetCallback(const nav_msgs::OdometryConstPtr &msg)
 
   if(is_flying_)
   {
-    // computeProNavControl();
-    computeControl();
+    if(intercept_strategy == PRONAV_STRATEGY) {
+      computeProNavControl();
+    }
+    else {
+      computeControl();
+    }
     // publishCommand();
   }
   else
@@ -847,14 +858,19 @@ Path_t InterceptController::planPath(Eigen::Vector3d fleet_pos, Eigen::Vector3d 
   // ============= Four waypoint implementation ========================
   // path = getSimpleWaypointPath(fleet_pos, target_pos, v_final);
 
-  // // ============= Smoothed trajectory implementation ========================
-  path = getSmoothedWaypointPath(fleet_pos, target_pos, v_final);
+  if (intercept_strategy == PREDICTIVE_WAYPOINTS_STRATEGY) {
+    // // ============= Smoothed trajectory implementation =======================
+    path = getSmoothedWaypointPath(fleet_pos, target_pos, v_final);
+  }
+  else if (intercept_strategy == ADAPTIVE_RADIUS_STRATEGY) {
+    // ============= Adaptive Protection Radius Defense implementation ========================
+    path = getAdaptiveProtectionRadiusWaypointPath(fleet_pos, target_pos);
+  }
+  else {
+    ROS_INFO("ERROR: invalid intercept strategy: %d", intercept_strategy);
 
   // // ============= Protection Radius Defense implementation ========================
   // path = getProtectionRadiusWaypointPath(fleet_pos, target_pos, v_final);
-
-  // ============= Adaptive Protection Radius Defense implementation ========================
-  // path = getAdaptiveProtectionRadiusWaypointPath(fleet_pos, target_pos);
 
   return path;
 }
