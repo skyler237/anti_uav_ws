@@ -47,6 +47,23 @@ InterceptController::InterceptController() :
 
   intercept_strategy = nh_private_.param<int>("intercept_strategy", ADAPTIVE_RADIUS_STRATEGY);
 
+  switch (intercept_strategy) {
+    case ADAPTIVE_RADIUS_STRATEGY:
+      ROS_INFO("Running adaptive radius strategy");
+      break;
+
+    case PRONAV_STRATEGY:
+      ROS_INFO("Running pronav strategy");
+      break;
+
+    case PREDICTIVE_WAYPOINTS_STRATEGY:
+      ROS_INFO("Running predictive wayoint strategy");
+      break;
+
+    default:
+      ROS_INFO("Invalid intercept strategy type.");
+  }
+
   // System parameters
   fleet_square_width_ = nh_private_.param<double>("fleet_square_width", 4.0); // [m]
   distance_start_rotation_ = nh_private_.param<double>("distance_start_rotation", 30.0); // [m]
@@ -868,6 +885,7 @@ Path_t InterceptController::planPath(Eigen::Vector3d fleet_pos, Eigen::Vector3d 
   }
   else {
     ROS_INFO("ERROR: invalid intercept strategy: %d", intercept_strategy);
+  }
 
   // // ============= Protection Radius Defense implementation ========================
   // path = getProtectionRadiusWaypointPath(fleet_pos, target_pos, v_final);
