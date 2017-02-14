@@ -236,12 +236,12 @@ void InterceptController::computeFleetState() {
   fleet_state_.y = (uav1_state_.y + uav2_state_.y + uav3_state_.y + uav4_state_.y)/4.0;
   fleet_state_.z = (uav1_state_.z + uav2_state_.z + uav3_state_.z + uav4_state_.z)/4.0;
 
-  if(debug_print & COMPUTE_FLEET_STATE) {
-    ROS_INFO("uav1 state: x=%f, y=%f, z=%f", uav1_state_.x, uav1_state_.y, uav1_state_.z);
-    ROS_INFO("uav2 state: x=%f, y=%f, z=%f", uav2_state_.x, uav2_state_.y, uav2_state_.z);
-    ROS_INFO("uav3 state: x=%f, y=%f, z=%f", uav3_state_.x, uav3_state_.y, uav3_state_.z);
-    ROS_INFO("uav4 state: x=%f, y=%f, z=%f", uav4_state_.x, uav4_state_.y, uav4_state_.z);
-  }
+  // if(debug_print & COMPUTE_FLEET_STATE) {
+  //   ROS_INFO("uav1 state: x=%f, y=%f, z=%f", uav1_state_.x, uav1_state_.y, uav1_state_.z);
+  //   ROS_INFO("uav2 state: x=%f, y=%f, z=%f", uav2_state_.x, uav2_state_.y, uav2_state_.z);
+  //   ROS_INFO("uav3 state: x=%f, y=%f, z=%f", uav3_state_.x, uav3_state_.y, uav3_state_.z);
+  //   ROS_INFO("uav4 state: x=%f, y=%f, z=%f", uav4_state_.x, uav4_state_.y, uav4_state_.z);
+  // }
 
   fleet_state_.xdot = (uav1_state_.xdot + uav2_state_.xdot + uav3_state_.xdot + uav4_state_.xdot)/4.0;
   fleet_state_.ydot = (uav1_state_.ydot + uav2_state_.ydot + uav3_state_.ydot + uav4_state_.ydot)/4.0;
@@ -288,13 +288,20 @@ void InterceptController::computeControl()
       target_d1 = target_pos;
       if(debug_print & COMPUTE_CONTROL) ROS_INFO("Intruder accel: x=%f, y=%f, z=%f", intruder_accel(0), intruder_accel(1), intruder_accel(2));
 
-      // Predict the target position
-      Eigen::Vector3d target_predicted = targetPredict(computeInterceptTime());
-      // Plan a path_ to the predicted position
-      path_ = planPath(z, target_predicted, target_pos);
 
-      // // Plan a path_ using the target's actual position
-      // path_ = planPath(z, target_pos, target_pos); // Using target position vector as intercept vector.
+      if(intercept_strategy == PREDICTIVE_WAYPOINTS_STRATEGY) {
+        // Predict the target position
+        Eigen::Vector3d target_predicted = targetPredict(computeInterceptTime());
+        // Plan a path_ to the predicted position
+        path_ = planPath(z, target_predicted, target_pos);
+      }
+      else if (intercept_strategy == ADAPTIVE_RADIUS_STRATEGY){
+        // Plan a path_ using the target's actual position
+        path_ = planPath(z, target_pos, target_pos); // Using target position vector as intercept vector.
+      }
+      else {
+        ROS_INFO("Invalid intercept strategy type!");
+      }
 
       // Debugging print waypoints loop
       if(debug_print & COMPUTE_CONTROL) {
