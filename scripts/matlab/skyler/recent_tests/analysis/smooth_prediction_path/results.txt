@@ -1,0 +1,43 @@
+Results for simulation #22
+header: 
+  seq: 0
+  stamp: 
+    secs: 13
+    nsecs: 940000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 83.9558719432
+  y: -1.4090319683
+  z: -17.7852835853
+intercept_point: 
+  x: 1.26532466291
+  y: -0.863117554928
+  z: 0.0
+intercept_radius: 85.8305896347
+intercept_time: 13.94
+---
+
+Results for simulation #23
+header: 
+  seq: 0
+  stamp: 
+    secs: 13
+    nsecs: 980000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 85.6720066914
+  y: -3.60458055842
+  z: -21.3859723337
+intercept_point: 
+  x: 3.68328047973
+  y: -3.24977353916
+  z: 0.0
+intercept_radius: 88.3744620588
+intercept_time: 13.98
+---
+
+Results for simulation #24

@@ -1,8 +1,8 @@
 path(path,'skyler')
 clear all
 
-% test_path = 'skyler/recent_tests/analysis/autotest/test17/';
-test_path = 'skyler/recent_tests/analysis/pronav/test9/';
+test_path = 'skyler/recent_tests/analysis/autotest/test18b/';
+% test_path = 'skyler/recent_tests/analysis/pronav/test9/';
 % test_path = 'skyler/recent_tests/analysis/smooth_prediction_path/test4/';
 
 results_file = strcat(test_path,'results.csv');
