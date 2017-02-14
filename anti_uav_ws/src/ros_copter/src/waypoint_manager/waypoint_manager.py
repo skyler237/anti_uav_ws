@@ -35,7 +35,7 @@ class WaypointManager():
         self.initial_position = rospy.get_param('~initial_position', initial_position)
 
         reset_position = Vector3()
-        reset_position.x = 110
+        reset_position.x = 130
         reset_position.y = 0
         reset_position.z = -35 # Note: this is a positive number representing magnitude of height, but in the NED coordinate system, up is negative
         self.reset_position = rospy.get_param('~reset_position', reset_position)
