@@ -4,8 +4,8 @@
   ADAPTIVE_RADIUS_STRATEGY 1
   PRONAV_STRATEGY 2
   PREDICTIVE_WAYPOINTS_STRATEGY 3 -->
-  <arg name="intercept_strategy" default="2"/>
-  <arg name="path_type" default="straight"/>
+  <arg name="intercept_strategy" default="3"/>
+  <arg name="path_type" default="random"/>
 
 
   <arg name="fleet_name" default="fleet"/>
