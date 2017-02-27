@@ -1,10 +1,10 @@
 path(path,'skyler')
 %bagfile = 'skyler/recent_tests/adaptive_plot_radius/net_margin_third_not_moving_test.bag';
-% bagfile = 'skyler/recent_tests/analysis/autotest/test16/auto_test2593.bag';
-% bagfile = 'skyler/recent_tests/analysis/pronav/test9/auto_test876.bag';
-% bagfile = 'skyler/recent_tests/analysis/smooth_prediction_path/test4/auto_test123.bag';
+% bagfile = 'skyler/recent_tests/analysis/autotest/test17/auto_test3.bag';
+% bagfile = 'skyler/recent_tests/analysis/pronav/test10/auto_test101.bag';
+bagfile = 'skyler/recent_tests/analysis/smooth_prediction_path/test6/auto_test12.bag';
 % bagfile = 'skyler/recent_tests/analysis/PIDtesting/auto_test28.bag';
-bagfile = 'skyler/recent_tests/analysis/pronav/test9/waypoints_test/auto_test1.bag';
+% bagfile = 'skyler/recent_tests/analysis/pronav/test9/waypoints_test/auto_test1.bag';
 data = processAllTopics(bagfile);
 
 [isSuccess,int_point,int_position, time] = findIntercept(bagfile);
@@ -25,13 +25,13 @@ end
 
 
 start_sim_time = 0.0;
-stop_sim_time = 13.3;
+stop_sim_time = 14.1;
 
 plot_intruder       = 1;
 plot_uav_goal       = 0;
 plot_uav_actual     = 1;
 plot_fleet_pose     = 0;
-plot_waypoint_path  = 1;
+plot_waypoint_path  = 0;
 plot_path_trajectory= 0;
 plot_trajectory_endpoints = 1;
 plot_uav_xyz        = 0;
@@ -39,7 +39,7 @@ plot_intruder_xyz   = 0;
 plot_intruder_dots  = 1;
 plot_actual_squares = 1;
 plot_goal_squares   = 0;
-square_cnt      = 20;
+square_cnt      = 100;
 
 
 
@@ -87,6 +87,7 @@ clf(1);
 
 
 hold('on');
+grid on;
 axis('equal');
 xlabel('X');
 ylabel('Y');

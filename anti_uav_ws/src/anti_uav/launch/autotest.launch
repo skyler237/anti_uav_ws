@@ -4,15 +4,15 @@
   ADAPTIVE_RADIUS_STRATEGY 1
   PRONAV_STRATEGY 2
   PREDICTIVE_WAYPOINTS_STRATEGY 3 -->
-  <arg name="intercept_strategy" default="3"/>
+  <arg name="intercept_strategy" default="1"/>
   <arg name="path_type" default="random"/>
 
 
   <arg name="fleet_name" default="fleet"/>
   <arg name="intruding_uav_name" default="intruder"/>
   <arg name="net"  default="net"/>
-  <arg name="net_size" default="6.0"/>
-  <arg name="net_size_half" default="3.0"/>
+  <arg name="net_size" default="10.0"/>
+  <arg name="net_size_half" default="5.0"/>
 
   <arg name="world_file" default="fast_basic.world"/>
   <!-- <arg name="world_file" default="basic.world"/> -->

@@ -1,9 +1,9 @@
 path(path,'skyler')
 clear all
 
-test_path = 'skyler/recent_tests/analysis/autotest/test19/';
+test_path = 'skyler/recent_tests/analysis/autotest/';
 % test_path = 'skyler/recent_tests/analysis/pronav/test10/';
-% test_path = 'skyler/recent_tests/analysis/smooth_prediction_path/test5/';
+% test_path = 'skyler/recent_tests/analysis/smooth_prediction_path/test6/';
 
 results_file = strcat(test_path,'results.csv');
 old_results = [];
@@ -14,7 +14,7 @@ end
 FileList = dir(strcat(test_path,'results*.bag'));
 N = size(FileList,1);
 
-net_width = 6;
+net_width = 10;
 
 times = [];
 points = [];
