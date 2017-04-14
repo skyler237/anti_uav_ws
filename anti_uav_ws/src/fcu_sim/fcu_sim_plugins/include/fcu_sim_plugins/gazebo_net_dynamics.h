@@ -1,22 +1,7 @@
-/*
- * Copyright 2016 James Jackson, MAGICC Lab, Brigham Young University - Provo, UT
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
-
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 
-#ifndef fcu_sim_PLUGINS_AIRCRAFT_FORCES_AND_MOMENTS_H
-#define fcu_sim_PLUGINS_AIRCRAFT_FORCES_AND_MOMENTS_H
+#ifndef fcu_sim_PLUGINS_NET_DYNAMICS_H
+#define fcu_sim_PLUGINS_NET_DYNAMICS_H
 
 #include <stdio.h>
 
@@ -36,6 +21,31 @@
 #include <geometry_msgs/Vector3.h>
 
 #include "fcu_sim_plugins/common.h"
+
+using namespace Eigen;
+
+typedef struct
+{
+  double x;
+  double y;
+  double z;
+
+  double phi;
+  double theta;
+  double psi;
+
+  double xdot;
+  double ydot;
+  double zdot;
+
+  // double xddot;
+  // double yddot;
+  // double zddot;
+
+  double phidot;
+  double thetadot;
+  double psidot;
+}state_t;
 
 namespace gazebo {
 static const std::string kDefaultWindSpeedSubTopic = "gazebo/wind_speed";
@@ -73,78 +83,27 @@ class GazeboAircraftForcesAndMoments : public ModelPlugin {
   event::ConnectionPtr updateConnection_; // Pointer to the update event connection.
 
   // physical parameters
-  double mass_;
-  double Jx_;
-  double Jy_;
-  double Jz_;
-  double Jxz_;
-  double rho_;
+  double agent_mass_;
+  double net_mass_;
+  double net_width_;
 
-  // aerodynamic coefficients
-  struct WingCoeff{
-    double S;
-    double b;
-    double c;
-    double M;
-    double epsilon;
-    double alpha0;
-  } wing_;
+  state_t adj1_state_;
+  state_t adj2_state_;
+  state_t corner_state_;
+  // state_t adj1_state_prev_;
+  // state_t adj2_state_prev_;
+  // state_t corner_state_prev_;
 
-  // Propeller Coefficients
-  struct PropCoeff{
-    double k_motor;
-    double k_T_P;
-    double k_Omega;
-    double e;
-    double S;
-    double C;
-  } prop_;
+  // Vector3d adj1_accel_;
+  // Vector3d adj2_accel_;
+  // Vector3d corner_accel_;
+  Vector3d model_forces_;
+  Vector3d adj1_forces_;
+  Vector3d adj2_forces_;
+  Vector3d corner_forces_;
 
-  // Lift Coefficients
-  struct LiftCoeff{
-    double O;
-    double alpha;
-    double beta;
-    double p;
-    double q;
-    double r;
-    double delta_a;
-    double delta_e;
-    double delta_r;
-  };
+  Vector3d total_force_;
 
-  LiftCoeff CL_;
-  LiftCoeff CD_;
-  LiftCoeff Cm_;
-  LiftCoeff CY_;
-  LiftCoeff Cell_;
-  LiftCoeff Cn_;
-
-  // not constants
-  // actuators
-  struct Actuators{
-    double e;
-    double a;
-    double r;
-    double t;
-  } delta_;
-
-    // wind
-  struct Wind{
-    double N;
-    double E;
-    double D;
-  } wind_;
-
-  // container for forces
-  struct ForcesAndTorques{
-    double Fx;
-    double Fy;
-    double Fz;
-    double l;
-    double m;
-    double n;
-  } forces_;
 
   // Time Counters
   double sampling_time_;
@@ -153,15 +112,32 @@ class GazeboAircraftForcesAndMoments : public ModelPlugin {
   ros::NodeHandle* node_handle_;
   ros::Subscriber command_sub_;
   ros::Subscriber wind_speed_sub_;
+  ros::Subscriber adjacent1_pose_sub_;
+  ros::Subscriber corner_pose_sub_;
+  ros::Subscriber adjacent2_pose_sub_;
 
-  boost::thread callback_queue_thread_;
-  void QueueThread();
-  void WindSpeedCallback(const geometry_msgs::Vector3& wind);
+  ros::Subscriber model_forces_sub_;
+  ros::Subscriber adjacent1_forces_sub_;
+  ros::Subscriber corner_forces_sub_;
+  ros::Subscriber adjacent2_forces_sub_;
+
   void CommandCallback(const fcu_common::CommandConstPtr& msg);
+  void Adjacent1PoseCallback(const nav_msgs::OdometryConstPtr &msg);
+  void Adjacent2PoseCallback(const nav_msgs::OdometryConstPtr &msg);
+  void CornerPoseCallback(const nav_msgs::OdometryConstPtr &msg);
+  void ModelForcesCallback(const geometry_msgs::Vector3ConstPtr &msg);
+  void Adjacent1ForcesCallback(const geometry_msgs::Vector3ConstPtr &msg);
+  void Adjacent2ForcesCallback(const geometry_msgs::Vector3ConstPtr &msg);
+  void CornerForcesCallback(const geometry_msgs::Vector3ConstPtr &msg);
 
-  std::unique_ptr<FirstOrderFilter<double>>  rotor_velocity_filter_;
-  math::Vector3 wind_speed_W_;
+  // Utility functions
+  Vector3d getForceOfNetBetweenAgents(state_t model_state, state_t other_state, Vector3d other_force, double edge_length);
+  Vector3d rotateBodyToInertial(Vector3d body_vec, double phi, double theta, double psi);
+  double tustinDerivative(double xdot, double x, double x_prev, double dt, double tau);
+  Vector3d tustinDerivativeVector(Vector3d xdot, Vector3d x, Vector3d x_prev, double dt, double tau);
+  Vector2d vectorProjection(Vector2d vec, Vector2d reference);
+
 };
 }
 
-#endif // fcu_sim_PLUGINS_AIRCRAFT_FORCES_AND_MOMENTS_H
+#endif // fcu_sim_PLUGINS_NET_DYNAMICS_H
