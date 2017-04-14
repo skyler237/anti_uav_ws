@@ -1,0 +1,631 @@
+Results for simulation #1092
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 730000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 79.660448342
+  y: -12.2706088352
+  z: -12.5115351589
+intercept_point: 
+  x: -2.65691654682
+  y: 1.48410847899
+  z: 0.0
+intercept_radius: 81.5652706933
+intercept_time: 14.73
+---
+
+Results for simulation #1093
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 600000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 81.6631684793
+  y: 7.02932285283
+  z: -13.2233043614
+intercept_point: 
+  x: 5.78675543167
+  y: 1.57179704221
+  z: 0.0
+intercept_radius: 83.0249374832
+intercept_time: 14.6
+---
+
+Results for simulation #1094
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 170000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 80.6905191833
+  y: 8.63564459615
+  z: -13.5361830737
+intercept_point: 
+  x: -0.809254462491
+  y: 2.20770614389
+  z: 0.0
+intercept_radius: 82.2724893015
+intercept_time: 15.17
+---
+
+Results for simulation #1095
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 810000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.7057211652
+  y: 8.50555490997
+  z: -16.0585276503
+intercept_point: 
+  x: 3.66770096116
+  y: 0.467801087122
+  z: 0.0
+intercept_radius: 82.7262606638
+intercept_time: 14.81
+---
+
+Results for simulation #1096
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 880000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.8633517891
+  y: -4.31403917236
+  z: -12.491163287
+intercept_point: 
+  x: -0.719639930557
+  y: 5.6331949838
+  z: 0.0
+intercept_radius: 81.9360833627
+intercept_time: 16.88
+---
+
+Results for simulation #1097
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 710000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 78.9240126546
+  y: -17.5450289421
+  z: -10.5040659953
+intercept_point: 
+  x: 2.51148153243
+  y: 5.30147529919
+  z: 0.0
+intercept_radius: 81.5301368607
+intercept_time: 15.71
+---
+
+Results for simulation #1098
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 690000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 81.3974133421
+  y: 1.09798594019
+  z: -11.3867798831
+intercept_point: 
+  x: 5.18691223313
+  y: 5.03693071322
+  z: 0.0
+intercept_radius: 82.1973431932
+intercept_time: 16.69
+---
+
+Results for simulation #1099
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 370000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.4340436756
+  y: -8.72381772888
+  z: -4.42263363543
+intercept_point: 
+  x: -7.15945762356
+  y: 4.36866979044
+  z: 0.0
+intercept_radius: 81.0265392699
+intercept_time: 15.37
+---
+
+Results for simulation #1100
+header: 
+  seq: 0
+  stamp: 
+    secs: 19
+    nsecs: 440000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 81.5577771905
+  y: -11.5835622491
+  z: -11.5242413775
+intercept_point: 
+  x: 5.74130501094
+  y: 9.11642967393
+  z: 0.0
+intercept_radius: 83.1784712168
+intercept_time: 19.44
+---
+
+Results for simulation #1101
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 550000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.6449632724
+  y: 11.1722559561
+  z: -10.6298567651
+intercept_point: 
+  x: 5.22309334439
+  y: 4.8986625989
+  z: 0.0
+intercept_radius: 82.1061706524
+intercept_time: 15.55
+---
+
+Results for simulation #1102
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 280000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 80.6902399444
+  y: 8.34252753233
+  z: -15.128376234
+intercept_point: 
+  x: 4.91350986793
+  y: 2.60475051683
+  z: 0.0
+intercept_radius: 82.51896967
+intercept_time: 15.28
+---
+
+Results for simulation #1103
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 690000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 82.4870611462
+  y: 3.45636648036
+  z: -14.3510007747
+intercept_point: 
+  x: 2.72257364343
+  y: 0.394170594592
+  z: 0.0
+intercept_radius: 83.7974519244
+intercept_time: 14.69
+---
+
+Results for simulation #1104
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 790000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 79.0119347173
+  y: -17.2273546344
+  z: -0.629840884722
+intercept_point: 
+  x: -3.5030821473
+  y: 1.50840976271
+  z: 0.0
+intercept_radius: 80.8706638715
+intercept_time: 16.79
+---
+
+Results for simulation #1105
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 840000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.0692593189
+  y: 12.5097506655
+  z: -11.8867893317
+intercept_point: 
+  x: 5.23673586063
+  y: 3.99522778056
+  z: 0.0
+intercept_radius: 81.9077280249
+intercept_time: 14.84
+---
+
+Results for simulation #1106
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 270000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 79.3003142103
+  y: 12.8197094191
+  z: -10.8730739275
+intercept_point: 
+  x: -1.87388894116
+  y: 1.34474466982
+  z: 0.0
+intercept_radius: 81.0623742564
+intercept_time: 15.27
+---
+
+Results for simulation #1107
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 410000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 80.0986661265
+  y: 12.1214985303
+  z: -11.2785103411
+intercept_point: 
+  x: 0.726451009594
+  y: 0.990832812626
+  z: 0.0
+intercept_radius: 81.7920035051
+intercept_time: 14.41
+---
+
+Results for simulation #1108
+header: 
+  seq: 0
+  stamp: 
+    secs: 19
+    nsecs:  30000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.9647910153
+  y: 15.8460781155
+  z: -7.6320809848
+intercept_point: 
+  x: -11.5760089591
+  y: 2.10539867267
+  z: 0.0
+intercept_radius: 82.8531486182
+intercept_time: 19.03
+---
+
+Results for simulation #1109
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 410000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 78.752937618
+  y: -19.5206538062
+  z: -15.74189895
+intercept_point: 
+  x: 3.49597678397
+  y: 2.98570690556
+  z: 0.0
+intercept_radius: 82.6491892945
+intercept_time: 15.41
+---
+
+Results for simulation #1110
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 450000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 83.0232542292
+  y: 0.514090927661
+  z: -15.7096698805
+intercept_point: 
+  x: 3.16011404686
+  y: -0.414535938981
+  z: 0.0
+intercept_radius: 84.4980399775
+intercept_time: 14.45
+---
+
+Results for simulation #1111
+header: 
+  seq: 0
+  stamp: 
+    secs: 18
+    nsecs: 890000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 79.9295184858
+  y: -20.5548763792
+  z: -8.52225672562
+intercept_point: 
+  x: 1.62617641041
+  y: 5.89238058319
+  z: 0.0
+intercept_radius: 82.9690287278
+intercept_time: 18.89
+---
+
+Results for simulation #1112
+header: 
+  seq: 0
+  stamp: 
+    secs: 17
+    nsecs: 660000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 81.0440756193
+  y: 3.86127505586
+  z: -2.39204857186
+intercept_point: 
+  x: 5.98135315956
+  y: 4.2004431725
+  z: 0.0
+intercept_radius: 81.17126052
+intercept_time: 17.66
+---
+
+Results for simulation #1113
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 940000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 82.3348396012
+  y: -7.37906132606
+  z: -8.92216221243
+intercept_point: 
+  x: 7.12047800734
+  y: 8.66229976358
+  z: 0.0
+intercept_radius: 83.1449417388
+intercept_time: 16.94
+---
+
+Results for simulation #1114
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 140000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 81.132809959
+  y: 8.31343671034
+  z: -4.76129343056
+intercept_point: 
+  x: -0.062831512696
+  y: 5.94787768684
+  z: 0.0
+intercept_radius: 81.6964870537
+intercept_time: 16.14
+---
+
+Results for simulation #1115
+header: 
+  seq: 0
+  stamp: 
+    secs: 17
+    nsecs: 850000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 78.2119719389
+  y: -21.6112047573
+  z: -2.62356855296
+intercept_point: 
+  x: 5.90171463627
+  y: -3.14303556816
+  z: 0.0
+intercept_radius: 81.1852193295
+intercept_time: 17.85
+---
+
+Results for simulation #1116
+header: 
+  seq: 0
+  stamp: 
+    secs: 13
+    nsecs: 940000000
+  frame_id: ''
+isIntercept: 
+  data: True
+intercept_pose: 
+  x: 82.4552578706
+  y: 3.1865276799
+  z: -19.0519483179
+intercept_point: 
+  x: -1.4908146719
+  y: -1.38279350482
+  z: 0.0
+intercept_radius: 84.6876628788
+intercept_time: 13.94
+---
+
+Results for simulation #1117
+header: 
+  seq: 0
+  stamp: 
+    secs: 14
+    nsecs: 770000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 77.1091603949
+  y: -26.4778540863
+  z: -15.3263933594
+intercept_point: 
+  x: 6.00274071559
+  y: 0.65471822914
+  z: 0.0
+intercept_radius: 82.956601348
+intercept_time: 14.77
+---
+
+Results for simulation #1118
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 200000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.8739800862
+  y: -2.99792268304
+  z: -10.8648434499
+intercept_point: 
+  x: 3.42858531866
+  y: 4.70157640839
+  z: 0.0
+intercept_radius: 81.6555755512
+intercept_time: 15.2
+---
+
+Results for simulation #1119
+header: 
+  seq: 0
+  stamp: 
+    secs: 15
+    nsecs: 720000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.1630329199
+  y: 10.2520139021
+  z: -11.6929505038
+intercept_point: 
+  x: -2.72112947724
+  y: 4.05450550063
+  z: 0.0
+intercept_radius: 81.6574597171
+intercept_time: 15.72
+---
+
+Results for simulation #1120
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs: 420000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.7437564308
+  y: -10.8371282598
+  z: -0.856316579139
+intercept_point: 
+  x: -2.76046281447
+  y: 7.24348289585
+  z: 0.0
+intercept_radius: 81.4722703106
+intercept_time: 16.42
+---
+
+Results for simulation #1121
+header: 
+  seq: 0
+  stamp: 
+    secs: 16
+    nsecs:  80000000
+  frame_id: ''
+isIntercept: 
+  data: False
+intercept_pose: 
+  x: 80.717625615
+  y: 5.82963392301
+  z: -9.69056067146
+intercept_point: 
+  x: -2.06304804266
+  y: 4.7320784455
+  z: 0.0
+intercept_radius: 81.5059916983
+intercept_time: 16.08
+---
+
+Results for simulation #1122
