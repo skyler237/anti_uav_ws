@@ -160,6 +160,7 @@ void GazeboAircraftForcesAndMoments::Load(physics::ModelPtr _model, sdf::Element
   // Connect Subscribers
   command_sub_ = node_handle_->subscribe(command_topic_, 1, &GazeboAircraftForcesAndMoments::CommandCallback, this);
   wind_speed_sub_ = node_handle_->subscribe(wind_speed_topic_, 1, &GazeboAircraftForcesAndMoments::WindSpeedCallback, this);
+  forces_pub_ = node_handle_->advertise<geometry_msgs::Vector3>("aircraft_forces", 10);
 }
 
 // This gets called by the world update event.
@@ -266,6 +267,11 @@ void GazeboAircraftForcesAndMoments::SendForces()
 {
   // apply the forces and torques to the joint
   link_->AddRelativeForce(math::Vector3(forces_.Fx, -forces_.Fy, -forces_.Fz));
+  geometry_msgs::Vector3 forces;
+  forces.x = forces_.Fx;
+  forces.y = forces_.Fy;
+  forces.z = forces_.Fz;
+  forces_pub_.publish(forces);
   link_->AddRelativeTorque(math::Vector3(forces_.l, -forces_.m, -forces_.n));
 }
 

@@ -152,6 +152,7 @@ class GazeboAircraftForcesAndMoments : public ModelPlugin {
   ros::NodeHandle* node_handle_;
   ros::Subscriber command_sub_;
   ros::Subscriber wind_speed_sub_;
+  ros::Publisher forces_pub_;
 
   boost::thread callback_queue_thread_;
   void QueueThread();
