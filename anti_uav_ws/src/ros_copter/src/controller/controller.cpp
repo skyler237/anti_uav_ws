@@ -10,13 +10,7 @@ Controller::Controller() :
 {
   // retrieve params
   thrust_eq_= nh_private_.param<double>("equilibrium_thrust", 0.34);
-  //always_flying_ = nh_private_.param<bool>("always_flying", false);
-  model_number_ = nh_private_.param<int>("model_number", 0);
-
-  // Initialize these values to zero
-  xc_.pn = 0.0;
-  xc_.pe = 0.0;
-  xc_.pd = 0.0;
+  is_flying_ = false;
 
   // Set PID Gains
   double P, I, D, tau;
@@ -55,8 +49,8 @@ Controller::Controller() :
   max_.pitch = nh_private_.param<double>("max_pitch", 0.785);
   max_.yaw_rate = nh_private_.param<double>("max_yaw_rate", 3.14159);
   max_.throttle = nh_private_.param<double>("max_throttle", 1.0);
-  max_.u = nh_private_.param<double>("max_u", 20.0);
-  max_.v = nh_private_.param<double>("max_v", 20.0);
+  max_.u = nh_private_.param<double>("max_u", 1.0);
+  max_.v = nh_private_.param<double>("max_v", 1.0);
 
   _func = boost::bind(&Controller::reconfigure_callback, this, _1, _2);
   _server.setCallback(_func);
@@ -64,13 +58,29 @@ Controller::Controller() :
   // Set up Publishers and Subscriber
   state_sub_ = nh_.subscribe("estimate", 1, &Controller::stateCallback, this);
   is_flying_sub_ = nh_.subscribe("is_flying", 1, &Controller::isFlyingCallback, this);
-  goal_sub_ = nh_.subscribe("waypoint", 1, &Controller::goalCallback, this);
+  cmd_sub_ = nh_.subscribe("high_level_command", 1, &Controller::cmdCallback, this);
 
-  command_pub_ = nh_.advertise<fcu_common::ExtendedCommand>("extended_command", 1);
+  command_pub_ = nh_.advertise<fcu_common::Command>("command", 1);
 }
+
 
 void Controller::stateCallback(const nav_msgs::OdometryConstPtr &msg)
 {
+  static double prev_time = 0;
+  if(prev_time == 0)
+  {
+    prev_time = msg->header.stamp.toSec();
+    return;
+  }
+
+  // Calculate time
+  double now = msg->header.stamp.toSec();
+  double dt = now - prev_time;
+  prev_time = now;
+
+  if(dt <= 0)
+    return;
+
   // This should already be coming in NED
   xhat_.pn = msg->pose.pose.position.x;
   xhat_.pe = msg->pose.pose.position.y;
@@ -93,7 +103,7 @@ void Controller::stateCallback(const nav_msgs::OdometryConstPtr &msg)
 
   if(is_flying_)
   {
-    computeControl();
+    computeControl(dt);
     publishCommand();
   }
   else
@@ -101,20 +111,46 @@ void Controller::stateCallback(const nav_msgs::OdometryConstPtr &msg)
     resetIntegrators();
     prev_time_ = ros::Time::now().toSec();
   }
-}
+  }
+
 
 void Controller::isFlyingCallback(const std_msgs::BoolConstPtr &msg)
 {
   is_flying_ = msg->data;
 }
 
-void Controller::goalCallback(const geometry_msgs::Vector3ConstPtr &msg)
+
+void Controller::cmdCallback(const fcu_common::CommandConstPtr &msg)
 {
-  xc_.pn = msg->x;
-  xc_.pe = msg->y;
-  xc_.pd = msg->z;
-  // ROS_INFO("UAV%d - Goal: xc_.pn=%f, xc_.pe=%f, xc_.pd=%f", model_number_, xc_.pn, xc_.pe, xc_.pd);
+  switch(msg->mode)
+  {
+    case fcu_common::Command::MODE_XPOS_YPOS_YAW_ALTITUDE:
+      xc_.pn = msg->x;
+      xc_.pe = msg->y;
+      xc_.pd = msg->F;
+      xc_.psi = msg->z;
+      control_mode_ = msg->mode;
+      break;
+    case fcu_common::Command::MODE_XVEL_YVEL_YAWRATE_ALTITUDE:
+      xc_.u = msg->x;
+      xc_.v = msg->y;
+      xc_.pd = msg->F;
+      xc_.r = msg->z;
+      control_mode_ = msg->mode;
+      break;
+    case fcu_common::Command::MODE_XACC_YACC_YAWRATE_AZ:
+      xc_.ax = msg->x;
+      xc_.ay = msg->y;
+      xc_.az = msg->F;
+      xc_.r = msg->z;
+      control_mode_ = msg->mode;
+      break;
+    default:
+      ROS_ERROR("ros_copter/controller: Unhandled command message of type %d", msg->mode);
+      break;
+  }
 }
+
 
 void Controller::reconfigure_callback(ros_copter::ControllerConfig &config, uint32_t level)
 {
@@ -134,19 +170,16 @@ void Controller::reconfigure_callback(ros_copter::ControllerConfig &config, uint
   I = config.x_I;
   D = config.x_D;
   PID_x_.setGains(P, I, D, tau);
-  ROS_INFO("X Gains: P=%f, I=%f, D=%f", P, I, D);
 
   P = config.y_P;
   I = config.y_I;
   D = config.y_D;
   PID_y_.setGains(P, I, D, tau);
-  ROS_INFO("Y Gains: P=%f, I=%f, D=%f", P, I, D);
 
   P = config.z_P;
   I = config.z_I;
   D = config.z_D;
   PID_z_.setGains(P, I, D, tau);
-  ROS_INFO("Z Gains: P=%f, I=%f, D=%f", P, I, D);
 
   P = config.psi_P;
   I = config.psi_I;
@@ -165,62 +198,81 @@ void Controller::reconfigure_callback(ros_copter::ControllerConfig &config, uint
 }
 
 
-void Controller::computeControl()
+void Controller::computeControl(double dt)
 {
-  double now = ros::Time::now().toSec();
-  double dt = now - prev_time_;
-  prev_time_ = now;
+  if(dt <= 0.0)
+  {
+    // This messes up the derivative calculation in the PID controllers
+    return;
+  }
 
-  if(dt > 0.0)
+  uint8_t mode_flag = control_mode_;
+
+  if(mode_flag == fcu_common::Command::MODE_XPOS_YPOS_YAW_ALTITUDE)
   {
     // Figure out desired velocities (in inertial frame)
     // By running the position controllers
-    // ROS_INFO("UAV%d - pndot: xc_.pn=%f, xhat_.pn=%f  ========\\", model_number_, xc_.pn, xhat_.pn);
     double pndot_c = PID_x_.computePID(xc_.pn, xhat_.pn, dt);
-    // ROS_INFO("UAV%d - pndot=%f ========/", model_number_, pndot_c);
-    // ROS_INFO("UAV%d - pedot: xc_.pe=%f, xhat_.pe=%f  ========\\", model_number_, xc_.pe, xhat_.pe);
     double pedot_c = PID_y_.computePID(xc_.pe, xhat_.pe, dt);
-    // ROS_INFO("UAV%d - pedot=%f ========/", model_number_, pedot_c);
-    // ROS_INFO("UAV%d - az: xc_.pd=%f, xhat_.pd=%f  ========\\", model_number_, xc_.pd, xhat_.pd);
-    double az_c = saturate(PID_z_.computePID(xc_.pd, xhat_.pd, dt), 1.0, -1.0);
-    // ROS_INFO("UAV%d - az=%f ========/", model_number_, az_c);
 
-
+    // Calculate desired yaw rate
+    // First, determine the shortest direction to the commanded psi
+    if(fabs(xc_.psi + 2*M_PI - xhat_.psi) < fabs(xc_.psi - xhat_.psi))
+    {
+      xc_.psi += 2*M_PI;
+    }
+    else if (fabs(xc_.psi - 2*M_PI -xhat_.psi) < fabs(xc_.psi - xhat_.psi))
+    {
+      xc_.psi -= 2*M_PI;
+    }
+    xc_.r = saturate(PID_psi_.computePID(xc_.psi, xhat_.psi, dt), max_.yaw_rate, -max_.yaw_rate);
 
     // Rotate into body frame
     /// TODO: Include pitch and roll in this mapping
-    double u_c = saturate(pndot_c*cos(xhat_.psi) + pedot_c*sin(xhat_.psi), max_.u, -1.0*max_.u);
-    double v_c = saturate(-pndot_c*sin(xhat_.psi) + pedot_c*cos(xhat_.psi), max_.v, -1.0*max_.v);
+    xc_.u = saturate(pndot_c*cos(xhat_.psi) + pedot_c*sin(xhat_.psi), max_.u, -1.0*max_.u);
+    xc_.v = saturate(-pndot_c*sin(xhat_.psi) + pedot_c*cos(xhat_.psi), max_.v, -1.0*max_.v);
 
-//    double u_c = xc_.pn;
-//    double v_c = xc_.pe;
-
-    double ax_c = saturate(PID_u_.computePID(u_c, xhat_.u, dt), max_.roll, -max_.roll);
-    double ay_c = saturate(PID_v_.computePID(v_c, xhat_.v, dt), max_.pitch, -max_.pitch);
-
-    // Model inversion (m[ax;ay;az] = m[0;0;g] + R'[0;0;-T]
-    double total_acc_c = sqrt((1.0-az_c)*(1.0-az_c) + ax_c*ax_c + ay_c*ay_c); // (in g's)
-    double thrust = total_acc_c*thrust_eq_; // calculate the total thrust in normalized units
-    double phi_c = asin(ay_c / total_acc_c);
-    double theta_c = -1.0*asin(ax_c / total_acc_c);
-
-//    std::printf("z_c = %0.02f\t, z = %0.02f\t, az_c = %0.02f\t, total = %0.02f\t, thrust = %0.02f\n",
-//                xc_.pd, xhat_.pd, az_c, total_acc_c, thrust);
-//    std::printf("u_c: = %0.02f,\t u = %0.02f,\t out = %0.04f,\t theta_c = %0.04f, dt = %0.04f\n", u_c, xhat_.u, ax_c, theta_c, dt);
-
-    // For now, just command yaw to be in the direction of travel
-    double psi_c = atan2(xc_.pn - xhat_.pn, xc_.pe - xhat_.pe);
-    double r_c = saturate(PID_psi_.computePID(psi_c, xhat_.psi, dt), max_.yaw_rate, -max_.yaw_rate);
-
-    // Save message for publishing
-    // Be sure to add the feed-forward term for thrust
-    command_.mode = fcu_common::ExtendedCommand::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
-    command_.F = saturate(thrust, max_.throttle, 0.0);
-    command_.x = phi_c;
-    command_.y = theta_c;
-    command_.z = r_c;
+    mode_flag = fcu_common::Command::MODE_XVEL_YVEL_YAWRATE_ALTITUDE;
   }
 
+  if(mode_flag == fcu_common::Command::MODE_XVEL_YVEL_YAWRATE_ALTITUDE)
+  {
+    /// TODO: Maxes are wrong
+    xc_.ax = saturate(PID_u_.computePID(xc_.u, xhat_.u, dt), max_.roll, -max_.roll);
+    xc_.ay = saturate(PID_v_.computePID(xc_.v, xhat_.v, dt), max_.pitch, -max_.pitch);
+    xc_.az = PID_z_.computePID(xc_.pd, xhat_.pd, dt);
+
+    // saturate az so that we don't shoot off into the sky if we are too high above our setpoint
+    if(xc_.az > 1.0)
+    {
+        xc_.az = 1.0;
+    }
+    mode_flag = fcu_common::Command::MODE_XACC_YACC_YAWRATE_AZ;
+  }
+
+  if(mode_flag == fcu_common::Command::MODE_XACC_YACC_YAWRATE_AZ)
+  {
+    // Model inversion (m[ax;ay;az] = m[0;0;g] + R'[0;0;-T]
+    // This model does not take into account drag.  If drag were being estimated, then we could
+    // perform even better control.  It also tends to pop the MAV up in the air when a large change
+    // in control is commanded as the MAV rotates to it's commanded attitude while also ramping up throttle.
+    // It works quite well, but it is a little oversimplified.
+    double total_acc_c = sqrt((1.0-xc_.az)*(1.0-xc_.az) + xc_.ax*xc_.ax + xc_.ay*xc_.ay); // (in g's)
+    xc_.throttle = total_acc_c*thrust_eq_; // calculate the total thrust in normalized units
+    xc_.phi = asin(xc_.ay / total_acc_c);
+    xc_.theta = -1.0*asin(xc_.ax / total_acc_c);
+    mode_flag = fcu_common::Command::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
+  }
+
+  if(mode_flag == fcu_common::Command::MODE_ROLL_PITCH_YAWRATE_THROTTLE)
+  {
+    // Pack up and send the command
+    command_.mode = fcu_common::Command::MODE_ROLL_PITCH_YAWRATE_THROTTLE;
+    command_.F = saturate(xc_.throttle, max_.throttle, 0.0);
+    command_.x = xc_.phi;
+    command_.y = xc_.theta;
+    command_.z = xc_.r;
+  }
 }
 
 void Controller::publishCommand()

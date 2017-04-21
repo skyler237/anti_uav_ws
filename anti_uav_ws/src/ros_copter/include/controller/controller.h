@@ -2,12 +2,12 @@
 #define CONTROLLER_H
 
 #include <ros/ros.h>
-#include <fcu_common/ExtendedCommand.h>
+#include <fcu_common/Command.h>
 #include <fcu_common/simple_pid.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
 #include <tf/tf.h>
-
+#include <stdint.h>
 #include <dynamic_reconfigure/server.h>
 #include <ros_copter/ControllerConfig.h>
 
@@ -31,6 +31,12 @@ typedef struct
   double p;
   double q;
   double r;
+
+  double ax;
+  double ay;
+  double az;
+
+  double throttle;
 }state_t;
 
 typedef struct
@@ -59,15 +65,13 @@ private:
   // Publishers and Subscribers
   ros::Subscriber state_sub_;
   ros::Subscriber is_flying_sub_;
-  ros::Subscriber goal_sub_;
+  ros::Subscriber cmd_sub_;
 
   ros::Publisher command_pub_;
 
   // Paramters
-  int model_number_;
   double thrust_eq_;
   bool is_flying_;
-  //bool always_flying_; // Can override the is_flying message
 
   // PID Controllers
   fcu_common::SimplePID PID_u_;
@@ -85,17 +89,17 @@ private:
   // Memory for sharing information between functions
   state_t xhat_; // estimate
   max_t max_;
-  fcu_common::ExtendedCommand command_;
+  fcu_common::Command command_;
   state_t xc_; // command
   double prev_time_;
-
+  uint8_t control_mode_;
 
   // Functions
   void stateCallback(const nav_msgs::OdometryConstPtr &msg);
   void isFlyingCallback(const std_msgs::BoolConstPtr &msg);
-  void goalCallback(const geometry_msgs::Vector3ConstPtr &msg);
+  void cmdCallback(const fcu_common::CommandConstPtr &msg);
 
-  void computeControl();
+  void computeControl(double dt);
   void resetIntegrators();
   void publishCommand();
   double saturate(double x, double max, double min);

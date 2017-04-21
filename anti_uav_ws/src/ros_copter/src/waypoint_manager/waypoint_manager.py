@@ -10,6 +10,9 @@ from ros_copter.srv import AddWaypoint, RemoveWaypoint, SetWaypointsFromFile
 from time import clock
 import csv
 import numpy as np
+import sys
+import tf
+import os
 
 class WaypointManager():
 
@@ -58,13 +61,27 @@ class WaypointManager():
 
 
         self.current_waypoint_index = 0
-
-        waypoint_msg = Vector3()
+        command_msg = Command()
         current_waypoint = np.array(self.waypoint_list[0])
-        waypoint_msg.x = current_waypoint[0]
-        waypoint_msg.y = current_waypoint[1]
-        waypoint_msg.z = current_waypoint[2]
-        self.waypoint_pub_.publish(waypoint_msg)
+
+        command_msg.x = current_waypoint[0]
+        command_msg.y = current_waypoint[1]
+        command_msg.F = current_waypoint[2]
+        if len(current_waypoint) > 3:
+            command_msg.z = current_waypoint[3]
+        else:
+            next_point = self.waypoint_list[(self.current_waypoint_index + 1) % len(self.waypoint_list)]
+            delta = next_point - current_waypoint
+            command_msg.z = math.atan2(delta[1], delta[0])
+        command_msg.mode = Command.MODE_XPOS_YPOS_YAW_ALTITUDE
+        self.waypoint_pub_.publish(command_msg)
+
+        # waypoint_msg = Vector3()
+        # current_waypoint = np.array(self.waypoint_list[0])
+        # waypoint_msg.x = current_waypoint[0]
+        # waypoint_msg.y = current_waypoint[1]
+        # waypoint_msg.z = current_waypoint[2]
+        # self.waypoint_pub_.publish(waypoint_msg)
 
         while not rospy.is_shutdown():
             # wait for new messages and call the callback when they arrive
@@ -178,11 +195,23 @@ class WaypointManager():
                 if self.current_waypoint_index > len(self.waypoint_list):
                     self.current_waypoint_index -=1
             next_waypoint = np.array(self.waypoint_list[self.current_waypoint_index])
-            waypoint_msg = Vector3()
-            waypoint_msg.x = next_waypoint[0]
-            waypoint_msg.y = next_waypoint[1]
-            waypoint_msg.z = next_waypoint[2]
-            self.waypoint_pub_.publish(waypoint_msg)
+            command_msg = Command()
+            command_msg.x = next_waypoint[0]
+            command_msg.y = next_waypoint[1]
+            command_msg.F = next_waypoint[2]
+            if len(current_waypoint) > 3:
+                command_msg.z = current_waypoint[3]
+            else:
+                next_point = self.waypoint_list[(self.current_waypoint_index + 1) % len(self.waypoint_list)]
+                delta = next_point - current_waypoint
+                command_msg.z = math.atan2(delta[1], delta[0])
+            command_msg.mode = Command.MODE_XPOS_YPOS_YAW_ALTITUDE
+            self.waypoint_pub_.publish(command_msg)
+            # waypoint_msg = Vector3()
+            # waypoint_msg.x = next_waypoint[0]
+            # waypoint_msg.y = next_waypoint[1]
+            # waypoint_msg.z = next_waypoint[2]
+            # self.waypoint_pub_.publish(waypoint_msg)
 
 
 if __name__ == '__main__':

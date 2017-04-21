@@ -16,6 +16,18 @@
   <arg name="fleet_z_I" default="0.05"/>
   <arg name="fleet_z_D" default="2.5"/>
 
+  <arg name="intruder_x_P" default="3.0"/>
+  <arg name="intruder_x_I" default="0.06"/>
+  <arg name="intruder_x_D" default="2.5"/>
+
+  <arg name="intruder_y_P" default="5.0"/>
+  <arg name="intruder_y_I" default="0.08"/>
+  <arg name="intruder_y_D" default="3.5"/>
+
+  <arg name="intruder_z_P" default="3.0"/>
+  <arg name="intruder_z_I" default="0.05"/>
+  <arg name="intruder_z_D" default="2.5"/>
+
 
   <!-- Set Up Fleet (net and 4 drones) -->
   <include file="$(find anti_uav)/launch/single_mav.launch">
@@ -226,17 +238,17 @@
     <param name="v/I" value="0.0"/>
     <param name="v/D" value="0.0"/>
 
-    <param name="x/P" value="0.0"/>
-    <param name="x/I" value="0.0"/>
-    <param name="x/D" value="0.0"/>
+    <param name="x_P" value="$(arg intruder_x_P)"/>
+    <param name="x_I" value="$(arg intruder_x_I)"/>
+    <param name="x_D" value="$(arg intruder_x_D)"/>
 
-    <param name="y/P" value="0.0"/>
-    <param name="y/I" value="0.0"/>
-    <param name="y/D" value="0.0"/>
+    <param name="y_P" value="$(arg intruder_y_P)"/>
+    <param name="y_I" value="$(arg intruder_y_I)"/>
+    <param name="y_D" value="$(arg intruder_y_D)"/>
 
-    <param name="z_P" value="3.0"/>
-    <param name="z_I" value="0.05"/>
-    <param name="z_D" value="2.5"/>
+    <param name="z_P" value="$(arg intruder_z_P)"/>
+    <param name="z_I" value="$(arg intruder_z_I)"/>
+    <param name="z_D" value="$(arg intruder_z_D)"/>
 
     <param name="psi/P" value="0.0"/>
     <param name="psi/I" value="0.0"/>
