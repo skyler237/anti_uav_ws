@@ -2,7 +2,7 @@
 #define INTERCEPT_CONTROLLER_H
 
 #include <ros/ros.h>
-#include <fcu_common/ExtendedCommand.h>
+#include <fcu_common/Command.h>
 #include <anti_uav/PathCoeff.h>
 #include <fcu_common/simple_pid.h>
 #include <nav_msgs/Odometry.h>

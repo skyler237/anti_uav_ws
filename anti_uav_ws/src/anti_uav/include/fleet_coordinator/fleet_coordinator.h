@@ -2,7 +2,7 @@
 #define FLEET_COORDINATOR_H
 
 #include <ros/ros.h>
-#include <fcu_common/ExtendedCommand.h>
+#include <fcu_common/Command.h>
 #include <fcu_common/simple_pid.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
