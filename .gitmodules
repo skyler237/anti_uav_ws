@@ -1,9 +1,6 @@
 [submodule "anti_uav_ws/src/fcu_sim"]
 	path = anti_uav_ws/src/fcu_sim
 	url = https://github.com/byu-magicc/fcu_sim.git
-[submodule "anti_uav_ws/src/fcu_common"]
-	path = anti_uav_ws/src/fcu_common
-	url = https://github.com/byu-magicc/fcu_common.git
 [submodule "anti_uav_ws/src/ROSflight"]
 	path = anti_uav_ws/src/ROSflight
 	url = https://github.com/byu-magicc/ROSflight.git
